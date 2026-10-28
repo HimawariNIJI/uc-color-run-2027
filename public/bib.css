@@ -1,0 +1,157 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    color: #111;
+    background: white;
+}
+
+/* Header dan Logo */
+header {
+    position: relative;
+    height: 64px;
+    display: flex;
+    justify-content: center;
+    z-index: 2;
+}
+
+.logo {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: clamp(48px, 9vw, 92px);
+    font-weight: 400;
+    line-height: 1;
+    white-space: nowrap;
+    top: 30px;
+}
+
+/* Main Container */
+main.bib-layout {
+    width: 90%;
+    max-width: 900px;
+    margin: 20px auto 40px;
+    padding: 40px 5% 50px;
+    background: #d9d9d9;
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.title {
+    text-align: center;
+    width: 100%;
+}
+
+/* Kartu Pembungkus Dalam */
+.bib-card {
+    background: #d9d9d9;
+    padding: 10px 0;
+    text-align: center;
+}
+
+/* Header Teks di Dalam Kartu */
+.card-header h2 {
+    font-size: clamp(22px, 2.5vw, 28px);
+    font-weight: 400;
+    margin: 0 0 10px;
+}
+
+.card-header p {
+    max-width: 650px;
+    margin: 0 auto 20px;
+    font-size: 15px;
+    line-height: 1.35;
+    color: #333;
+}
+
+.divider {
+    border: none;
+    border-top: 1px solid #777;
+    width: 100%;
+    margin: 20px 0 30px;
+}
+
+/* --- TAMPILAN BELUM REGISTER --- */
+.cube-icon {
+    font-size: 36px;
+    margin-bottom: 12px;
+}
+
+#stateUnregistered h3 {
+    font-size: clamp(22px, 3vw, 30px);
+    font-weight: 600;
+    margin: 0 0 12px;
+    color: #111;
+}
+
+.state-desc {
+    max-width: 450px;
+    margin: 0 auto;
+    font-size: 15px;
+    line-height: 1.4;
+    color: #222;
+}
+
+/* --- TAMPILAN SUDAH REGISTER --- */
+#stateRegistered h3 {
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    margin: 0 0 8px;
+    color: #222;
+}
+
+.bib-number {
+    font-size: clamp(36px, 6vw, 56px);
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    margin-bottom: 24px;
+    color: #111;
+}
+
+.qr-label {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    margin-bottom: 12px;
+    color: #222;
+}
+
+.qr-box {
+    width: 140px;
+    height: 140px;
+    background: #909090;
+    border-radius: 12px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.qr-box span {
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: #fff;
+}
+
+/* Mobile Adjustments */
+@media (max-width: 768px) {
+    header {
+        height: 50px;
+    }
+
+    main.bib-layout {
+        width: 95%;
+        padding: 30px 4% 35px;
+    }
+
+    .qr-box {
+        width: 120px;
+        height: 120px;
+    }
+}
