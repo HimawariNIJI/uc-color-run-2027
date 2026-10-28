@@ -13,28 +13,28 @@ return [
                 ['label' => 'Early Bird', 'price' => 0],
                 ['label' => 'Regular', 'price' => 0],
             ],
-            'info' => ['Lorem Ipsum', 'Lorem'],
+            'info' => ['info', '.'],
         ],
         '5K' => [
             'fee' => [
                 ['label' => 'Early Bird', 'price' => 0],
                 ['label' => 'Regular', 'price' => 0],
             ],
-            'info' => ['Lorem Ipsum', 'Lorem'],
+            'info' => ['info', '.'],
         ],
         '10K' => [
             'fee' => [
                 ['label' => 'Early Bird', 'price' => 0],
                 ['label' => 'Regular', 'price' => 0],
             ],
-            'info' => ['Lorem Ipsum', 'Lorem'],
+            'info' => ['info', '.'],
         ],
         'HM' => [
             'fee' => [
                 ['label' => 'Early Bird', 'price' => 0],
                 ['label' => 'Regular', 'price' => 0],
             ],
-            'info' => ['Lorem Ipsum', 'Lorem'],
+            'info' => ['info', '.'],
         ],
     ],
     'lorem' => 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque a tempus augue. Aliquam tincidunt cursus turpis, a tempus nisi tristique id.',
