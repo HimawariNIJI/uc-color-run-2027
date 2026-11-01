@@ -1,0 +1,209 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: 'Plus Jakarta Sans', Arial, -apple-system, sans-serif;
+    color: #111;
+    background: #ffffff;
+    min-height: 100vh;
+}
+
+/* Header dan Logo */
+header {
+    position: relative;
+    height: 40px;
+}
+
+/* Main Container */
+main.bib-layout {
+    width: 90%;
+    max-width: 750px;
+    margin: 20px auto 40px;
+    padding: 30px 4% 40px;
+    background: #d9d9d9;
+    border-radius: 1.25rem;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.back-link-wrapper {
+    margin-bottom: 5px;
+}
+
+.back-link {
+    font-size: 13.5px;
+    color: #111;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.back-link:hover {
+    text-decoration: underline;
+}
+
+.title {
+    text-align: center;
+    width: 100%;
+}
+
+.title .logo {
+    font-size: clamp(38px, 6vw, 64px);
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    color: #0f172a;
+    line-height: 1;
+}
+
+/* Kartu Pembungkus Dalam */
+.bib-card {
+    background: #d9d9d9;
+    padding: 10px 0;
+    text-align: center;
+}
+
+/* Header Teks di Dalam Kartu */
+.card-header h2 {
+    font-size: clamp(22px, 2.5vw, 28px);
+    font-weight: 700;
+    margin: 0 0 10px;
+    color: #0f172a;
+}
+
+.card-header p {
+    max-width: 650px;
+    margin: 0 auto 20px;
+    font-size: 14.5px;
+    line-height: 1.4;
+    color: #334155;
+}
+
+.divider {
+    border: none;
+    border-top: 1px solid #777;
+    width: 100%;
+    margin: 15px 0 25px;
+}
+
+/* --- TAMPILAN BELUM REGISTER --- */
+.cube-icon {
+    font-size: 36px;
+    margin-bottom: 12px;
+}
+
+#stateUnregistered h3 {
+    font-size: clamp(20px, 3vw, 26px);
+    font-weight: 700;
+    margin: 0 0 12px;
+    color: #111;
+}
+
+.state-desc {
+    max-width: 450px;
+    margin: 0 auto 20px;
+    font-size: 14px;
+    line-height: 1.4;
+    color: #334155;
+}
+
+/* --- TAMPILAN SUDAH REGISTER --- */
+.bib-box {
+    background: #ffffff;
+    border: 2px solid #0f172a;
+    border-radius: 16px;
+    padding: 24px;
+    max-width: 440px;
+    margin: 0 auto;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+#stateRegistered h3 {
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    margin: 0 0 6px;
+    color: #64748b;
+    text-transform: uppercase;
+}
+
+.runner-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 6px;
+}
+
+.bib-number {
+    font-size: clamp(40px, 7vw, 60px);
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    margin: 10px 0 16px;
+    color: #0f172a;
+}
+
+.race-cat-badge {
+    display: inline-block;
+    background: #0f172a;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+}
+
+.qr-label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    margin-bottom: 10px;
+    color: #475569;
+}
+
+.qr-box {
+    width: 140px;
+    height: 140px;
+    background: #f1f5f9;
+    border: 1px dashed #94a3b8;
+    border-radius: 12px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.qr-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+/* Action button */
+.action-btn {
+    display: inline-block;
+    padding: 12px 24px;
+    background: #737982;
+    color: #ffffff;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    border: none;
+    border-radius: 10px;
+    text-decoration: none;
+    transition: background 0.2s ease;
+}
+
+.action-btn:hover {
+    background: #5e646d;
+}
+
+@media (max-width: 768px) {
+    main.bib-layout {
+        width: 95%;
+        padding: 24px 4% 30px;
+    }
+}
+
