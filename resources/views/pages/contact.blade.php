@@ -1,0 +1,57 @@
+<x-layouts.app title="Contact" description="Hubungi panitia UC Color Run 2027 untuk pertanyaan seputar registrasi, pembayaran, dan hari lomba.">
+    <div class="page-container page-section">
+        <x-panel>
+            <div class="grid gap-10 lg:grid-cols-2 lg:gap-12">
+                <div>
+                    <h1 class="text-h2">Contact Us</h1>
+                    <p class="mt-3 text-body text-muted">
+                        Punya pertanyaan seputar registrasi, pembayaran, atau hari lomba? Kirim pesan dan panitia akan membalas melalui email.
+                    </p>
+
+                    <form method="POST" action="{{ route('contact.store') }}" class="mt-6 flex flex-col gap-4" novalidate data-submit-guard>
+                        @csrf
+
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <x-form.field label="Full Name" for="name">
+                                <x-form.input name="name" :value="auth()->user()?->name" placeholder="Enter your name" autocomplete="name" pill required />
+                            </x-form.field>
+                            <x-form.field label="Email Address" for="email">
+                                <x-form.input type="email" name="email" :value="auth()->user()?->email" placeholder="you@example.com" autocomplete="email" pill required />
+                            </x-form.field>
+                        </div>
+
+                        <x-form.field label="Message" for="message">
+                            <x-form.textarea name="message" rows="5" placeholder="How can we help you?" required />
+                        </x-form.field>
+
+                        <x-button type="submit" pill block class="mt-1" data-busy-label="Mengirim…">Submit</x-button>
+                    </form>
+                </div>
+
+                <x-media class="hidden min-h-96 lg:block" tone="cyan" icon="mail" label="Panitia UC Color Run 2027" alt="Panitia UC Color Run 2027" />
+            </div>
+        </x-panel>
+
+        <section class="mt-16 border-t border-border pt-12 md:mt-20 md:pt-16">
+            <x-section-heading title="More Ways to Connect" :uppercase="false" description="Kamu juga dapat menghubungi panitia melalui kanal resmi berikut atau langsung datang ke sekretariat kami." />
+
+            <ul class="mx-auto mt-10 grid max-w-content gap-x-4 gap-y-8 min-[30rem]:grid-cols-2 lg:grid-cols-4">
+                @foreach ($channels as $channel)
+                    <li>
+                        <a
+                            href="{{ $channel['url'] }}"
+                            @if ($channel['external']) target="_blank" rel="noopener" @endif
+                            class="group flex flex-col items-center gap-3 rounded-2xl p-2 text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                        >
+                            <span class="grid size-16 place-items-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-white md:size-20">
+                                <x-icon :name="$channel['icon']" class="size-7" />
+                            </span>
+                            <span class="text-body font-semibold">{{ $channel['label'] }}</span>
+                            <span class="text-body-sm wrap-anywhere text-muted group-hover:text-primary">{{ $channel['value'] }}</span>
+                        </a>
+                    </li>
+                @endforeach
+            </ul>
+        </section>
+    </div>
+</x-layouts.app>
