@@ -10,7 +10,7 @@
     $size === 'lg' ? 'gap-3 py-1.5 pl-1.5 pr-6' : 'gap-2.5 py-1 pl-1 pr-4',
 ]) }}>
     <span @class([
-        'grid shrink-0 place-items-center rounded-full bg-primary/10 font-bold text-primary',
+        'grid shrink-0 place-items-center rounded-full bg-brand-yellow font-bold text-primary',
         $size === 'lg' ? 'size-11 text-h4' : 'size-8 text-body-sm',
     ]) aria-hidden="true">{{ $admin->initial() }}</span>
     <span @class(['truncate font-medium', $size === 'lg' ? 'text-body-lg' : 'text-body-sm'])>{{ $admin->name }}</span>

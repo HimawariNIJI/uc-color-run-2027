@@ -7,7 +7,7 @@
 @props(['width' => 'content'])
 
 <section {{ $attributes->class([
-    'relative mx-auto mt-8 w-full rounded-3xl border border-border bg-surface px-5 pb-8 pt-14 shadow-card sm:px-8 md:px-12 md:pb-12 md:pt-16',
+    'relative mx-auto mt-8 w-full rounded-3xl border border-border bg-surface px-5 pb-8 pt-14 shadow-card motion-safe:animate-rise sm:px-8 md:px-12 md:pb-12 md:pt-16',
     match ($width) {
         'form' => 'max-w-form',
         'card' => 'max-w-card',

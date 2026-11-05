@@ -4,7 +4,7 @@
             <div class="flex flex-col gap-10 md:gap-14">
                 <div class="grid items-center gap-6 md:grid-cols-2 md:gap-10">
                     <div>
-                        <h1 class="text-h2 uppercase">Apa itu UC Color Run?</h1>
+                        <h1 class="text-h2 uppercase text-primary">Apa itu UC Color Run?</h1>
                         <p class="mt-4 text-body text-muted">
                             UC Color Run adalah acara lari tahunan Universitas Ciputra yang memadukan olahraga, musik, dan perayaan warna. Di setiap color zone, peserta disambut lemparan bubuk warna yang aman sehingga garis finish dipenuhi pelari yang berwarna-warni. Acara ini terbuka untuk mahasiswa, alumni, keluarga, hingga masyarakat umum.
                         </p>
@@ -14,7 +14,7 @@
 
                 <div class="grid items-center gap-6 md:grid-cols-2 md:gap-10">
                     <div class="md:order-last md:text-right">
-                        <h2 class="text-h2 uppercase">Latar Belakang</h2>
+                        <h2 class="text-h2 uppercase text-primary">Latar Belakang</h2>
                         <p class="mt-4 text-body text-muted">
                             Berawal dari keinginan untuk mendekatkan kampus dengan masyarakat, UC Color Run hadir sebagai ruang bertemu yang sehat dan menyenangkan. Sejalan dengan semangat entrepreneurship Universitas Ciputra, acara ini dikelola oleh mahasiswa sebagai wadah belajar merancang dan menjalankan event berskala besar.
                         </p>
@@ -43,7 +43,7 @@
                 <x-media class="aspect-video rounded-none md:aspect-auto md:min-h-72" tone="cyan" icon="users" alt="Peserta UC Color Run" />
                 <div class="flex flex-col gap-3 border-t border-border p-6 sm:p-8 md:border-l md:border-t-0 md:p-10">
                     <p class="text-caption font-semibold uppercase tracking-[0.18em] text-primary">Come and Join Us</p>
-                    <h2 class="text-h2 uppercase">UC Color Run</h2>
+                    <h2 class="text-h2 uppercase text-primary">UC Color Run</h2>
                     <p class="text-body text-muted">
                         Jadilah bagian dari lautan warna di UC Color Run 2027. Ajak teman, keluarga, dan komunitasmu untuk berlari bersama.
                     </p>

@@ -18,6 +18,6 @@
     <span class="grid size-14 place-items-center rounded-2xl {{ $iconClasses }}">
         <x-icon :name="$icon" class="size-7" />
     </span>
-    <{{ $heading }} class="mt-4 text-h3">{{ $title }}</{{ $heading }}>
+    <{{ $heading }} class="mt-4 font-display text-h3 font-normal text-primary">{{ $title }}</{{ $heading }}>
     <div class="mt-2 max-w-md text-body text-muted">{{ $slot }}</div>
 </div>

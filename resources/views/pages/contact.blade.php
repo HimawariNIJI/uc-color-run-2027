@@ -3,7 +3,7 @@
         <x-panel>
             <div class="grid gap-10 lg:grid-cols-2 lg:gap-12">
                 <div>
-                    <h1 class="text-h2">Contact Us</h1>
+                    <h1 class="text-h2 text-primary">Contact Us</h1>
                     <p class="mt-3 text-body text-muted">
                         Punya pertanyaan seputar registrasi, pembayaran, atau hari lomba? Kirim pesan dan panitia akan membalas melalui email.
                     </p>

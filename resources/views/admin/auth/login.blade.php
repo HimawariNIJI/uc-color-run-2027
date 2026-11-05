@@ -2,16 +2,16 @@
     <div class="w-full max-w-card">
         <x-admin.flash />
 
-        <section class="rounded-3xl border border-border bg-surface px-6 py-8 shadow-card sm:px-9 sm:py-10">
+        <section class="rounded-3xl border-[3px] border-primary bg-surface px-6 py-8 shadow-[0_8px_0_0_var(--color-brand-orange)] motion-safe:animate-rise sm:px-9 sm:py-10">
             <div class="flex flex-col items-center text-center">
-                <x-logo variant="mark" class="size-14" />
-                <h1 class="mt-4 text-h3 uppercase">UC Color Run 2027</h1>
+                <x-logo variant="mark" size="xl" />
+                <h1 class="mt-4 font-display text-h3 font-normal uppercase text-primary">UC Color Run 2027</h1>
                 <p class="mt-1 text-caption font-semibold uppercase tracking-[0.2em] text-muted">Administration Portal</p>
             </div>
 
             <hr class="my-6 border-border">
 
-            <h2 class="text-h4">Welcome back</h2>
+            <h2 class="text-h4 text-primary">Welcome back</h2>
             <p class="mt-1 text-body-sm text-muted">Sign in to manage the event and participant registrations.</p>
 
             <form method="POST" action="{{ route('admin.login.store') }}" class="mt-6 flex flex-col gap-4" novalidate data-submit-guard>

@@ -6,10 +6,12 @@ import { initDismissibles } from './modules/dismissible';
 import { initDropdowns } from './modules/dropdown';
 import { initMobileMenu } from './modules/mobile-menu';
 import { initRegionSelects } from './modules/region-select';
+import { initReveal } from './modules/reveal';
 import { initSubmitGuards } from './modules/submit-guard';
 import { initTabs } from './modules/tabs';
 
 [
+    initReveal,
     initDropdowns,
     initMobileMenu,
     initCollapsibles,

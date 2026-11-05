@@ -5,14 +5,14 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-        <meta name="theme-color" content="#713BDB">
+        <meta name="theme-color" content="#3D12C1">
         <meta name="robots" content="noindex, nofollow">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <title>{{ $title }} · Admin Console · {{ config('app.name') }}</title>
 
-        <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
-        <link rel="alternate icon" href="{{ asset('favicon.ico') }}">
+        <link rel="icon" href="{{ \App\Support\BrandAsset::url('UC Run Logo.PNG') }}" type="image/png">
+        <link rel="apple-touch-icon" href="{{ \App\Support\BrandAsset::url('UC Run Logo.PNG') }}">
 
         @fonts
         @vite(['resources/css/app.css', 'resources/js/admin.js'])

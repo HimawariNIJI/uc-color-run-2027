@@ -1,6 +1,6 @@
 @props(['user'])
 
-<span {{ $attributes->class('grid shrink-0 place-items-center overflow-hidden rounded-full bg-primary/10 text-primary') }}>
+<span {{ $attributes->class('grid shrink-0 place-items-center overflow-hidden rounded-full bg-brand-yellow text-primary') }}>
     @if ($user->avatar)
         <img src="{{ $user->avatar }}" alt="" class="size-full object-cover" referrerpolicy="no-referrer" loading="lazy">
     @else

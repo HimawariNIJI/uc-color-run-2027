@@ -5,7 +5,7 @@
     <div class="page-container page-section">
         <x-panel>
             <x-registration-steps :current="3" />
-            <h1 class="mt-6 text-center text-h3">Pilih Jarak Lari</h1>
+            <h1 class="mt-6 text-center font-display text-h3 font-normal uppercase text-primary">Pilih Jarak Lari</h1>
             <p class="mt-2 text-center text-body-sm text-muted">
                 Tipe registrasi: <span class="font-semibold text-foreground">{{ $registrationType->label() }}</span>
                 &middot;

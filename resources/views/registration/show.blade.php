@@ -8,7 +8,7 @@
 
             <section class="mt-3 rounded-3xl border border-border bg-surface p-5 shadow-card sm:p-6">
                 <header class="flex items-center justify-between gap-3 border-b border-border pb-4">
-                    <h1 class="text-h3">My Registration</h1>
+                    <h1 class="font-display text-h3 font-normal uppercase text-primary">My Registration</h1>
                     @if (! $registration)
                         <x-badge>Empty</x-badge>
                     @elseif ($registration->isPaid())

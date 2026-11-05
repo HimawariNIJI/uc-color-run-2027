@@ -4,8 +4,10 @@
  * Markup: [data-countdown="ISO-8601 date"] containing [data-countdown-unit] elements whose value is
  * "days", "hours", "minutes" or "seconds". When no "hours" unit is present, minutes show the total
  * minutes left (useful for short payment windows). The element gets [data-countdown-finished] at zero.
+ * Add [data-countdown-animate] to give changing digits a short tick animation.
  */
 const pad = (value) => String(value).padStart(2, '0');
+const TICK_CLASS = 'motion-safe:animate-tick';
 
 export function initCountdowns(root) {
     root.querySelectorAll('[data-countdown]').forEach((element) => {
@@ -17,6 +19,7 @@ export function initCountdowns(root) {
         }
 
         const hasHours = units.some((unit) => unit.dataset.countdownUnit === 'hours');
+        const animate = element.hasAttribute('data-countdown-animate');
         let timer = null;
 
         const tick = () => {
@@ -29,7 +32,20 @@ export function initCountdowns(root) {
             };
 
             units.forEach((unit) => {
-                unit.textContent = pad(values[unit.dataset.countdownUnit]);
+                const next = pad(values[unit.dataset.countdownUnit]);
+
+                if (unit.textContent === next) {
+                    return;
+                }
+
+                unit.textContent = next;
+
+                if (animate) {
+                    // Restart the animation on every change.
+                    unit.classList.remove(TICK_CLASS);
+                    void unit.offsetWidth;
+                    unit.classList.add(TICK_CLASS);
+                }
             });
 
             if (remaining === 0) {

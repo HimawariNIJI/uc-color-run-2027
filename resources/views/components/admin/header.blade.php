@@ -4,7 +4,7 @@
 
 <header class="relative flex items-start justify-between gap-4 pb-6 pt-6 lg:items-center lg:pb-8 lg:pt-10">
     <div class="min-w-0">
-        <h1 class="text-h3">{{ $title }}</h1>
+        <h1 class="font-display text-h3 font-normal text-primary">{{ $title }}</h1>
         @if ($subtitle)
             <p class="mt-1 text-body-sm text-muted">{{ $subtitle }}</p>
         @endif

@@ -10,7 +10,7 @@
     @if ($title)
         <div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
             <div class="min-w-0">
-                <h2 class="text-h4">{{ $title }}</h2>
+                <h2 class="text-h4 text-primary">{{ $title }}</h2>
                 @if ($description)
                     <p class="mt-1 text-body-sm text-muted">{{ $description }}</p>
                 @endif

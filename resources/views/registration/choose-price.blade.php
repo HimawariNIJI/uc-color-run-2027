@@ -5,7 +5,7 @@
     <div class="page-container page-section">
         <x-panel>
             <x-registration-steps :current="2" />
-            <h1 class="mt-6 text-center text-h3">Pilih Tipe Harga</h1>
+            <h1 class="mt-6 text-center font-display text-h3 font-normal uppercase text-primary">Pilih Tipe Harga</h1>
             <p class="mt-2 text-center text-body-sm text-muted">
                 Tipe registrasi: <span class="font-semibold text-foreground">{{ $registrationType->label() }}</span>
                 &middot;
