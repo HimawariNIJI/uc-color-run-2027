@@ -148,12 +148,14 @@
         <div class="mx-auto mt-10 max-w-4xl" data-reveal="clip">
             @if ($recapVideoUrl)
                 <div class="aspect-video overflow-hidden rounded-3xl border-[3px] border-primary bg-foreground shadow-card">
+                    {{-- YouTube needs the page origin as referrer, so the policy is set explicitly. --}}
                     <iframe
                         src="{{ $recapVideoUrl }}"
                         title="Video recap UC Color Run 2026"
                         class="size-full"
                         loading="lazy"
-                        allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        referrerpolicy="strict-origin-when-cross-origin"
                         allowfullscreen
                     ></iframe>
                 </div>

@@ -58,25 +58,29 @@ return [
         ],
     ],
 
-    // Race details per category. Route images live in public/ (null shows a placeholder).
+    // Race details per category. Route images live in public/ (null shows a placeholder);
+    // photos are official PDD Documentation files in public/assets/images.
     'categories' => [
         '3k' => [
             'start_time' => '06.15 WIB',
             'cut_off' => '45 menit',
             'tagline' => 'Fun run santai untuk semua usia, cocok untuk pelari pemula dan keluarga.',
             'route_image' => null,
+            'photo' => 'Race Category Page (3K).JPG',
         ],
         '5k' => [
             'start_time' => '06.00 WIB',
             'cut_off' => '60 menit',
             'tagline' => 'Jarak favorit untuk menikmati color zone sambil menjaga ritme lari.',
             'route_image' => null,
+            'photo' => 'Race Category Page (5K).JPG',
         ],
         '10k' => [
             'start_time' => '05.30 WIB',
             'cut_off' => '90 menit',
             'tagline' => 'Tantangan terjauh bagi pelari yang ingin menguji ketahanan dan kecepatan.',
             'route_image' => null,
+            'photo' => 'Race Category Page (10K).JPG',
         ],
     ],
 
@@ -117,7 +121,8 @@ return [
 
     // Optional media. Leave null to show the designed placeholders.
     'banner_image' => null,
-    'recap_video_url' => null,
+    // Official recap video from the PDD Documentation Division. Any YouTube link works (null shows a placeholder).
+    'recap_video_url' => 'https://youtu.be/HEm8BXHGUTE',
 
     // Placeholder sponsors. Set 'logo' to a public path such as 'images/sponsors/acme.png'.
     'sponsors' => [

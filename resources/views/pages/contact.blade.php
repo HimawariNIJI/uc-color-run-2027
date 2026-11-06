@@ -28,7 +28,11 @@
                     </form>
                 </div>
 
-                <x-media class="hidden min-h-96 lg:block" tone="cyan" icon="mail" label="Panitia UC Color Run 2027" alt="Panitia UC Color Run 2027" />
+                <x-media
+                    class="hidden min-h-96 lg:block"
+                    :src="\App\Support\BrandAsset::url('Contact Us Page.JPG')"
+                    alt="Panitia UC Color Run berpose di depan backdrop acara"
+                />
             </div>
         </x-panel>
 

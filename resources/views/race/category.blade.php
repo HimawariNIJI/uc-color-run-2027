@@ -24,8 +24,10 @@
                             <span class="block border-b border-primary/10 px-1.5 py-2 text-center text-caption font-semibold uppercase leading-tight tracking-wide text-muted transition-colors group-aria-selected:border-primary group-aria-selected:bg-primary group-aria-selected:text-brand-yellow sm:px-3 sm:py-2.5 sm:tracking-wider">
                                 UC Color Run
                             </span>
-                            <x-media :icon="false" class="aspect-square rounded-none transition-colors sm:aspect-[4/3]" tone="primary">
-                                <span class="font-display text-h2 text-primary/55 transition duration-300 group-hover:scale-105 group-aria-selected:text-primary sm:text-h1">{{ $category->label() }}</span>
+                            {{-- The photo is decorative (empty alt): the tab is already named "UC Color Run 3K" by its text. --}}
+                            <x-media :icon="false" class="aspect-square rounded-none sm:aspect-[4/3]" :src="\App\Support\BrandAsset::url($category->details()['photo'])">
+                                <span class="absolute inset-x-0 bottom-0 h-2/3 bg-linear-to-t from-primary/85 via-primary/30 to-transparent" aria-hidden="true"></span>
+                                <span class="absolute inset-x-0 bottom-0 pb-2 font-display text-h2 text-brand-cream [text-shadow:0_2px_8px_rgb(34_17_79/0.6)] transition duration-300 group-hover:scale-105 group-aria-selected:text-brand-yellow sm:pb-3 sm:text-h1">{{ $category->label() }}</span>
                             </x-media>
                         </button>
                     @endforeach

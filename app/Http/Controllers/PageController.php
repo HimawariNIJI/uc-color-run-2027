@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Support\EarlyBirdQuota;
 use App\Support\EventSchedule;
+use App\Support\YouTube;
 use Illuminate\View\View;
 
 class PageController extends Controller
@@ -17,7 +18,7 @@ class PageController extends Controller
             'timeline' => EventSchedule::timeline(),
             'sponsors' => config('event.sponsors'),
             'bannerImage' => config('event.banner_image'),
-            'recapVideoUrl' => config('event.recap_video_url'),
+            'recapVideoUrl' => YouTube::embedUrl(config('event.recap_video_url')),
         ]);
     }
 

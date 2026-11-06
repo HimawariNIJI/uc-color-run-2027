@@ -5,21 +5,29 @@ namespace App\Support;
 use InvalidArgumentException;
 
 /**
- * Brand images from the Design Division, served from public/assets/images.
- * Filenames contain spaces and "@", so URLs are encoded here.
+ * Official media from the Design and Documentation divisions, served from public/assets.
+ * Filenames contain spaces, brackets, "&" and "@", so URLs are encoded here.
  */
 class BrandAsset
 {
-    private const DIRECTORY = 'assets/images';
+    public const IMAGES = 'assets/images';
 
     /**
      * @var array<string, array{0: int, 1: int}>
      */
     private static array $dimensions = [];
 
-    public static function url(string $file): string
+    public static function url(string $file, string $directory = self::IMAGES): string
     {
-        return asset(self::DIRECTORY.'/'.rawurlencode($file));
+        return self::publicUrl($directory.'/'.$file);
+    }
+
+    /**
+     * URL for a path relative to public/, with every segment encoded.
+     */
+    public static function publicUrl(string $path): string
+    {
+        return asset(implode('/', array_map(rawurlencode(...), explode('/', $path))));
     }
 
     /**
@@ -27,18 +35,20 @@ class BrandAsset
      *
      * @return array{0: int, 1: int}
      */
-    public static function dimensions(string $file): array
+    public static function dimensions(string $file, string $directory = self::IMAGES): array
     {
-        if (isset(self::$dimensions[$file])) {
-            return self::$dimensions[$file];
+        $key = $directory.'/'.$file;
+
+        if (isset(self::$dimensions[$key])) {
+            return self::$dimensions[$key];
         }
 
-        $size = @getimagesize(public_path(self::DIRECTORY.'/'.$file));
+        $size = @getimagesize(public_path($key));
 
         if ($size === false) {
-            throw new InvalidArgumentException("Unknown brand image [{$file}].");
+            throw new InvalidArgumentException("Unknown brand image [{$key}].");
         }
 
-        return self::$dimensions[$file] = [$size[0], $size[1]];
+        return self::$dimensions[$key] = [$size[0], $size[1]];
     }
 }

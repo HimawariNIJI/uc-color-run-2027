@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Registration;
+use App\Support\BrandAsset;
 
 it('selects the 3K category by default', function () {
     $this->get(route('race.category'))
@@ -49,4 +50,20 @@ it('counts down to the configured race day', function () {
         ->assertSee('data-countdown="2027-03-21T05:30:00+07:00"', false)
         ->assertSee('data-countdown-unit="days">01</span>', false)
         ->assertSee('data-countdown-unit="hours">00</span>', false);
+});
+
+it('shows the official PDD photo on each category tab', function () {
+    $photos = ['Race Category Page (3K).JPG', 'Race Category Page (5K).JPG', 'Race Category Page (10K).JPG'];
+
+    foreach ($photos as $photo) {
+        expect(public_path('assets/images/'.$photo))->toBeFile();
+    }
+
+    $this->get(route('race.category'))
+        ->assertOk()
+        ->assertSeeInOrder([
+            'id="category-tab-3k"', 'src="'.BrandAsset::url($photos[0]).'"',
+            'id="category-tab-5k"', 'src="'.BrandAsset::url($photos[1]).'"',
+            'id="category-tab-10k"', 'src="'.BrandAsset::url($photos[2]).'"',
+        ], false);
 });

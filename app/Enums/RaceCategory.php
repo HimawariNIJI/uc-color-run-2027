@@ -54,7 +54,7 @@ enum RaceCategory: string
     /**
      * Race details configured for this category.
      *
-     * @return array{start_time: string, cut_off: string, tagline: string, route_image: ?string}
+     * @return array{start_time: string, cut_off: string, tagline: string, route_image: ?string, photo: string}
      */
     public function details(): array
     {

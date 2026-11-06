@@ -9,7 +9,11 @@
                             UC Color Run adalah acara lari tahunan Universitas Ciputra yang memadukan olahraga, musik, dan perayaan warna. Di setiap color zone, peserta disambut lemparan bubuk warna yang aman sehingga garis finish dipenuhi pelari yang berwarna-warni. Acara ini terbuka untuk mahasiswa, alumni, keluarga, hingga masyarakat umum.
                         </p>
                     </div>
-                    <x-media class="aspect-[4/3]" tone="primary" alt="Dokumentasi UC Color Run" label="Foto UC Color Run" />
+                    <x-media
+                        class="aspect-[4/3]"
+                        :src="\App\Support\BrandAsset::url('About Page (Apa itu UC Color Run).JPG')"
+                        alt="Ratusan peserta UC Color Run 2026 berlari melewati gerbang start di kampus Universitas Ciputra"
+                    />
                 </div>
 
                 <div class="grid items-center gap-6 md:grid-cols-2 md:gap-10">
@@ -19,7 +23,11 @@
                             Berawal dari keinginan untuk mendekatkan kampus dengan masyarakat, UC Color Run hadir sebagai ruang bertemu yang sehat dan menyenangkan. Sejalan dengan semangat entrepreneurship Universitas Ciputra, acara ini dikelola oleh mahasiswa sebagai wadah belajar merancang dan menjalankan event berskala besar.
                         </p>
                     </div>
-                    <x-media class="aspect-[4/3]" tone="pink" alt="Suasana UC Color Run" label="Foto suasana acara" />
+                    <x-media
+                        class="aspect-[4/3]"
+                        :src="\App\Support\BrandAsset::url('About Page (Latar Belakang).JPG')"
+                        alt="Dua pelari tersenyum saat berlari di rute UC Color Run yang rindang"
+                    />
                 </div>
             </div>
         </x-panel>
@@ -40,7 +48,11 @@
 
         <section class="mt-16 border-t border-border pt-12 md:mt-20 md:pt-16">
             <div class="mx-auto grid max-w-content overflow-hidden rounded-3xl border border-border bg-surface shadow-card md:grid-cols-[2fr_3fr]">
-                <x-media class="aspect-video rounded-none md:aspect-auto md:min-h-72" tone="cyan" icon="users" alt="Peserta UC Color Run" />
+                <x-media
+                    class="aspect-video rounded-none md:aspect-auto md:min-h-72"
+                    :src="\App\Support\BrandAsset::url('About Page (Come & Join Us).JPG')"
+                    alt="Sekelompok peserta UC Color Run 2026 berswafoto dengan kaus dan medali acara"
+                />
                 <div class="flex flex-col gap-3 border-t border-border p-6 sm:p-8 md:border-l md:border-t-0 md:p-10">
                     <p class="text-caption font-semibold uppercase tracking-[0.18em] text-primary">Come and Join Us</p>
                     <h2 class="text-h2 uppercase text-primary">UC Color Run</h2>

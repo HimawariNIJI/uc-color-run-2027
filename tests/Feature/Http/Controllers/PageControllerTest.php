@@ -2,6 +2,7 @@
 
 use App\Models\Registration;
 use App\Models\User;
+use App\Support\BrandAsset;
 
 it('renders every public page', function (string $routeName, string $expectedText) {
     $this->get(route($routeName))
@@ -55,4 +56,40 @@ it('shows the sign in button to guests and the account menu to participants', fu
         ->assertSee('Rina Wijaya')
         ->assertSee('My Registration')
         ->assertSee('Sign Out');
+});
+
+it('shows the official PDD photo in each page section', function (string $routeName, array $photos) {
+    foreach ($photos as $photo) {
+        expect(public_path('assets/images/'.$photo))->toBeFile();
+    }
+
+    $this->get(route($routeName))
+        ->assertOk()
+        ->assertSeeInOrder(array_map(fn (string $photo): string => 'src="'.BrandAsset::url($photo).'"', $photos), false);
+})->with([
+    'about' => ['about', [
+        'About Page (Apa itu UC Color Run).JPG',
+        'About Page (Latar Belakang).JPG',
+        'About Page (Come & Join Us).JPG',
+    ]],
+    'contact' => ['contact', ['Contact Us Page.JPG']],
+]);
+
+it('embeds the recap video from YouTube without autoplay', function () {
+    config(['event.recap_video_url' => 'https://youtu.be/HEm8BXHGUTE']);
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertSee('src="https://www.youtube-nocookie.com/embed/HEm8BXHGUTE?rel=0"', false)
+        ->assertSee('title="Video recap UC Color Run 2026"', false)
+        ->assertDontSee('autoplay', false);
+});
+
+it('shows a placeholder when no recap video is configured', function () {
+    config(['event.recap_video_url' => null]);
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertDontSee('<iframe', false)
+        ->assertSee('Video recap segera hadir');
 });
