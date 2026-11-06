@@ -3,7 +3,350 @@
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
+/*
+|--------------------------------------------------------------------------
+| Design tokens — UC Color Run 2027 brand (Design Division)
+|--------------------------------------------------------------------------
+*/
+
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    /* Official fonts: Afacad Flux for text and UI, Belanosima (regular only) for display headings */
+    --font-sans: var(--font-afacad-flux, 'Afacad Flux'), ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+        'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-display: var(--font-belanosima, 'Belanosima'), ui-rounded, system-ui, sans-serif;
+
+    /* Official palette — the seven brand colours */
+    --color-brand-indigo: #3d12c1;
+    --color-brand-yellow: #ffe286;
+    --color-brand-cream: #f4f1e9;
+    --color-brand-orange: #ff742f;
+    --color-brand-violet: #7257fc;
+    --color-brand-pink: #ff56b3;
+    --color-brand-orchid: #d86bbe;
+
+    /* Roles. The "-strong" shades are darker steps of a brand colour for small text (WCAG AA). */
+    --color-primary: var(--color-brand-indigo);
+    --color-primary-strong: #2e0b97;
+    --color-secondary: var(--color-brand-orange);
+    --color-secondary-strong: #b8460f;
+    --color-accent-yellow: var(--color-brand-yellow);
+    --color-accent-violet: var(--color-brand-violet);
+    --color-accent-violet-strong: #5538e6;
+    --color-accent-pink: var(--color-brand-pink);
+    --color-accent-pink-strong: #c21c78;
+    --color-accent-orchid: var(--color-brand-orchid);
+
+    /* Neutrals, derived from cream and indigo */
+    --color-background: var(--color-brand-cream);
+    --color-surface: #fffdf8;
+    --color-foreground: #22114f;
+    --color-muted: #5f5878;
+    --color-border: #e6e0d2;
+
+    /* Status colours stay functional (paid, pending, failed) */
+    --color-success: #16a34a;
+    --color-success-strong: #15803d;
+    --color-warning: #f59e0b;
+    --color-warning-strong: #b45309;
+    --color-error: #dc2626;
+    --color-info: #5538e6;
+
+    /* Headings scale fluidly from the mobile spec (375px) to the desktop spec (1440px).
+       H1 and H2 use Belanosima, which ships in a single (regular) weight. */
+    --text-h1: clamp(2rem, 1.648rem + 1.502vw, 3rem);
+    --text-h1--line-height: 1.1;
+    --text-h1--font-weight: 400;
+    --text-h2: clamp(1.75rem, 1.574rem + 0.751vw, 2.25rem);
+    --text-h2--line-height: 1.15;
+    --text-h2--font-weight: 400;
+    --text-h3: clamp(1.375rem, 1.331rem + 0.188vw, 1.5rem);
+    --text-h3--line-height: 1.3;
+    --text-h3--letter-spacing: -0.005em;
+    --text-h3--font-weight: 600;
+    --text-h4: clamp(1.125rem, 1.081rem + 0.188vw, 1.25rem);
+    --text-h4--line-height: 1.4;
+    --text-h4--font-weight: 600;
+
+    /* Body, button and label sizes switch from mobile to desktop at the md breakpoint */
+    --text-body-lg: var(--size-body-lg);
+    --text-body-lg--line-height: 1.6;
+    --text-body: var(--size-body);
+    --text-body--line-height: 1.6;
+    --text-body-sm: var(--size-body-sm);
+    --text-body-sm--line-height: 1.5;
+    --text-caption: 0.75rem;
+    --text-caption--line-height: 1.45;
+    --text-nav: 1rem;
+    --text-nav--line-height: 1.5;
+    --text-nav--font-weight: 500;
+    --text-button: var(--size-button);
+    --text-button--line-height: 1.25;
+    --text-button--font-weight: 600;
+    --text-label: 0.875rem;
+    --text-label--line-height: 1.4;
+    --text-label--font-weight: 500;
+
+    /* Layout widths */
+    --container-page: 75rem;
+    --container-content: 60rem;
+    --container-form: 48rem;
+    --container-card: 28rem;
+
+    /* Elevation, tinted with the brand indigo */
+    --shadow-card: 0 1px 2px 0 rgb(61 18 193 / 0.05), 0 10px 28px -14px rgb(61 18 193 / 0.16);
+    --shadow-popover: 0 18px 44px -14px rgb(34 17 79 / 0.3), 0 2px 8px -2px rgb(34 17 79 / 0.1);
+    /* The yellow pill button sits on an orange "track" that compresses when pressed */
+    --shadow-button: 0 4px 0 0 var(--color-brand-orange), 0 10px 22px -10px rgb(61 18 193 / 0.45);
+    --shadow-button-hover: 0 6px 0 0 var(--color-brand-orange), 0 14px 26px -10px rgb(61 18 193 / 0.5);
+    --shadow-button-pressed: 0 1px 0 0 var(--color-brand-orange), 0 4px 10px -6px rgb(61 18 193 / 0.4);
+
+    /* Motion */
+    --ease-spring: cubic-bezier(0.22, 0.75, 0.2, 1);
+    --animate-rise: rise 0.7s var(--ease-spring) both;
+    --animate-float: float 7s ease-in-out infinite;
+    --animate-float-slow: float 11s ease-in-out infinite;
+    --animate-drift: drift 14s ease-in-out infinite alternate;
+    --animate-tick: tick 0.35s var(--ease-spring);
+
+    @keyframes rise {
+        from {
+            opacity: 0;
+            translate: 0 1.25rem;
+        }
+    }
+
+    @keyframes float {
+        50% {
+            translate: 0 -0.5rem;
+        }
+    }
+
+    @keyframes drift {
+        to {
+            translate: 1.25rem 0;
+        }
+    }
+
+    @keyframes tick {
+        from {
+            opacity: 0.35;
+            translate: 0 -0.35em;
+        }
+    }
+}
+
+@layer base {
+    :root {
+        --size-body-lg: 1rem;
+        --size-body: 0.875rem;
+        --size-body-sm: 0.8125rem;
+        --size-button: 0.9375rem;
+
+        @media (width >= 48rem) {
+            --size-body-lg: 1.125rem;
+            --size-body: 1rem;
+            --size-body-sm: 0.875rem;
+            --size-button: 1rem;
+        }
+    }
+
+    html {
+        scroll-padding-top: 6rem;
+        -webkit-tap-highlight-color: transparent;
+
+        @media (prefers-reduced-motion: no-preference) {
+            scroll-behavior: smooth;
+        }
+    }
+
+    /* Keep the page still behind an open dialog (admin detail modals). */
+    :root:has(dialog[open]) {
+        overflow: hidden;
+    }
+
+    body {
+        background-color: var(--color-background);
+        color: var(--color-foreground);
+        font-size: var(--text-body);
+        line-height: var(--text-body--line-height);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Display headings use Belanosima. :where() keeps this overridable with font-sans. */
+    :where(.text-h1, .text-h2) {
+        font-family: var(--font-display);
+    }
+
+    ::selection {
+        background-color: color-mix(in oklab, var(--color-brand-yellow) 70%, transparent);
+        color: var(--color-foreground);
+    }
+
+    /* Let the custom calendar icon open the native date picker. */
+    input[type='date']::-webkit-calendar-picker-indicator {
+        position: absolute;
+        inset: 0;
+        width: auto;
+        height: auto;
+        opacity: 0;
+        cursor: pointer;
+    }
+
+    /*
+     * Scroll reveal: elements marked [data-reveal] fade and slide in when they enter the viewport.
+     * The js-reveal class is set by an inline script only when motion is allowed, so content is
+     * never hidden without JavaScript.
+     */
+    .js-reveal [data-reveal] {
+        opacity: 0;
+        translate: 0 1.5rem;
+        transition:
+            opacity 0.7s var(--ease-spring),
+            translate 0.7s var(--ease-spring),
+            clip-path 0.9s var(--ease-spring);
+        transition-delay: var(--reveal-delay, 0ms);
+    }
+
+    .js-reveal [data-reveal='clip'] {
+        translate: none;
+        clip-path: inset(0 0 100% 0 round 1.5rem);
+    }
+
+    .js-reveal [data-reveal].is-revealed {
+        opacity: 1;
+        translate: 0 0;
+    }
+
+    /* Once wiped in, open the clip well past the edges so shadows and button "tracks" are never cut off. */
+    .js-reveal [data-reveal='clip'].is-revealed {
+        clip-path: inset(-3rem round 0);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        ::before,
+        ::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+        }
+    }
+}
+
+/*
+|--------------------------------------------------------------------------
+| Shared layout utilities
+|--------------------------------------------------------------------------
+*/
+
+@utility page-container {
+    margin-inline: auto;
+    width: 100%;
+    max-width: var(--container-page);
+    padding-inline: 1rem;
+
+    @media (width >= 40rem) {
+        padding-inline: 1.5rem;
+    }
+
+    @media (width >= 64rem) {
+        padding-inline: 2rem;
+    }
+}
+
+@utility page-section {
+    padding-block: 3rem;
+
+    @media (width >= 48rem) {
+        padding-block: 4.5rem;
+    }
+}
+
+/* Shared look for text inputs, selects and textareas (16px text avoids iOS zoom on focus). */
+@utility form-control {
+    width: 100%;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-size: 1rem;
+    line-height: 1.5;
+    transition:
+        border-color 150ms,
+        background-color 150ms,
+        box-shadow 150ms;
+
+    &::placeholder {
+        color: color-mix(in oklab, var(--color-muted) 75%, transparent);
+    }
+
+    /* Empty selects and date fields read as placeholders. */
+    &:is(select):has(option[value='']:checked),
+    &:is([type='date']):invalid {
+        color: color-mix(in oklab, var(--color-muted) 75%, transparent);
+    }
+
+    & option {
+        color: var(--color-foreground);
+    }
+
+    &:hover:not(:disabled, :focus) {
+        border-color: color-mix(in oklab, var(--color-primary) 30%, var(--color-border));
+    }
+
+    &:focus {
+        outline: none;
+        border-color: var(--color-primary);
+        background-color: var(--color-surface);
+        box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-brand-yellow) 70%, transparent);
+    }
+
+    &[aria-invalid='true'] {
+        border-color: var(--color-error);
+    }
+
+    &[aria-invalid='true']:focus {
+        box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-error) 15%, transparent);
+    }
+
+    &:disabled,
+    &:read-only:not(select) {
+        cursor: not-allowed;
+        background-color: color-mix(in oklab, var(--color-border) 45%, var(--color-background));
+        color: var(--color-muted);
+    }
+}
+
+/* Subtle confetti-dot texture for coloured banners. */
+@utility bg-dots {
+    background-image: radial-gradient(circle at center, rgb(255 255 255 / 0.16) 1px, transparent 1.5px);
+    background-size: 18px 18px;
+}
+
+/* Soft colour-powder glow for indigo sections (orange, pink and violet from the palette). */
+@utility bg-powder {
+    background-image:
+        radial-gradient(60% 70% at 12% 18%, rgb(255 86 179 / 0.42), transparent 70%),
+        radial-gradient(55% 60% at 88% 12%, rgb(255 116 47 / 0.38), transparent 70%),
+        radial-gradient(70% 70% at 70% 100%, rgb(114 87 252 / 0.55), transparent 70%);
+}
+
+/* Thin multi-colour stripe used under the header and on accent edges. */
+@utility bg-brand-stripe {
+    background-image: linear-gradient(
+        90deg,
+        var(--color-brand-orange),
+        var(--color-brand-pink) 30%,
+        var(--color-brand-orchid) 55%,
+        var(--color-brand-violet) 78%,
+        var(--color-brand-yellow)
+    );
+}
+
+@utility scrollbar-none {
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
 }

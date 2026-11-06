@@ -1,6 +1,6 @@
 <?php
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Tests\TestCase;
 
 /*
@@ -15,7 +15,7 @@ use Tests\TestCase;
 */
 
 pest()->extend(TestCase::class)
- // ->use(RefreshDatabase::class)
+    ->use(LazilyRefreshDatabase::class)
     ->in('Feature');
 
 /*
@@ -44,7 +44,27 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+/**
+ * A valid participant form submission.
+ *
+ * @param  array<string, mixed>  $overrides
+ * @return array<string, mixed>
+ */
+function registrationPayload(array $overrides = []): array
 {
-    // ..
+    return [
+        'full_name' => 'Budi Santoso',
+        'phone' => '081234567890',
+        'birth_date' => '1999-05-12',
+        'gender' => 'male',
+        'identity_number' => '3578011205990001',
+        'tshirt_size' => 'M',
+        'emergency_contact_name' => 'Siti Santoso',
+        'emergency_contact_phone' => '081298765432',
+        'province' => 'Jawa Timur',
+        'city' => 'Kota Surabaya',
+        'address' => 'Jl. Raya CitraLand No. 1, Surabaya',
+        'agreement' => '1',
+        ...$overrides,
+    ];
 }
