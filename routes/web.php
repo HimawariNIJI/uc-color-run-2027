@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\RacepackController;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'uc-color-run.category')->name('category');
@@ -21,3 +22,11 @@ Route::get('/regulation', function () {
         'paragraphs' => array_fill(0, 6, config('uc-color-run.lorem')),
     ]);
 })->name('regulation');
+
+// Racepack scanner (panitia).
+// TODO: pindahkan ke dalam group middleware 'auth' setelah Admin Login selesai.
+Route::get('/racepack-scanner', [RacepackController::class, 'index'])->name('racepack.scanner');
+Route::get('/racepack/recent', [RacepackController::class, 'recent'])->name('racepack.recent');
+Route::post('/racepack/scan', [RacepackController::class, 'scan'])
+    ->middleware('throttle:120,1')
+    ->name('racepack.scan');

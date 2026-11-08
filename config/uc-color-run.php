@@ -3,6 +3,7 @@
 return [
     'site' => [
         'name' => 'UC Color Run 2027',
+        'timezone' => 'Asia/Jakarta',
         'event_date' => '2027-01-01 06:00:00',
         'date_label' => '1 Januari 2027',
         'register_url' => '#register',

@@ -34,5 +34,15 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
+    'google' => [
+        'credentials' => env('GOOGLE_SHEETS_CREDENTIALS'),
+
+        'spreadsheet_id' => env(
+            'GOOGLE_SHEETS_SPREADSHEET_ID'
+        ),
+
+        // Nama tab (bukan nama file) tempat data peserta berada.
+        'sheet' => env('GOOGLE_SHEETS_SHEET', 'Sheet1'),
+    ],
 
 ];

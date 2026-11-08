@@ -1,4 +1,8 @@
 /* UC Color Run 2027 - interaksi halaman */
+// Library kamera cukup berat: hanya dimuat di halaman scanner.
+if (document.getElementById('scanner')) {
+    import('./racepack-scanner.js');
+}
 (function () {
     'use strict';
 
