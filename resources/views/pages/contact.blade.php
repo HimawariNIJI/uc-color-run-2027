@@ -10,6 +10,19 @@
 
                     <form method="POST" action="{{ route('contact.store') }}" class="mt-6 flex flex-col gap-4" novalidate data-submit-guard>
                         @csrf
+                        @if (session('success'))
+                            <div class="rounded-lg bg-green-100 p-4 text-green-800">
+                                {{ session('success') }}
+                            </div>
+                        @endif
+
+                        @if ($errors->any())
+                            <div class="rounded-lg bg-red-100 p-4 text-red-800">
+                                @foreach ($errors->all() as $error)
+                                    <p>{{ $error }}</p>
+                                @endforeach
+                            </div>
+                        @endif
 
                         <div class="grid gap-4 sm:grid-cols-2">
                             <x-form.field label="Full Name" for="name">

@@ -6,6 +6,8 @@ use App\Http\Requests\StoreContactMessageRequest;
 use App\Models\ContactMessage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
+use Illuminate\Support\Facades\Mail;
+use Throwable;
 
 class ContactController extends Controller
 {
@@ -25,9 +27,28 @@ class ContactController extends Controller
     }
 
     public function store(StoreContactMessageRequest $request): RedirectResponse
-    {
-        ContactMessage::create($request->validated());
+{
+    $contact = ContactMessage::create($request->validated());
 
-        return to_route('contact')->with('success', 'Pesan kamu sudah terkirim. Panitia akan membalas melalui email secepatnya.');
+    try {
+        Mail::raw(
+            "Nama: {$contact->name}\nEmail: {$contact->email}\n\nPesan:\n{$contact->message}",
+            function ($mail) use ($contact) {
+                $mail->to(config('mail.contact_to'))
+                    ->subject('Pesan Contact Us - UC Color Run 2027')
+                    ->replyTo($contact->email, $contact->name);
+            }
+        );
+
+        $message = config('mail.default') === 'log'
+            ? 'Pesan tersimpan. Email testing dicatat di log aplikasi.'
+            : 'Pesan berhasil dikirim. Panitia akan membalas melalui email.';
+    } catch (Throwable $exception) {
+        report($exception);
+
+        $message = 'Pesan tersimpan, tetapi email belum berhasil dikirim.';
     }
+
+    return to_route('contact')->with('success', $message);
+}
 }
