@@ -41,8 +41,8 @@ class ContactController extends Controller
         );
 
         $message = config('mail.default') === 'log'
-            ? 'Pesan tersimpan. Email testing dicatat di log aplikasi.'
-            : 'Pesan berhasil dikirim. Panitia akan membalas melalui email.';
+            ? 'Pesan berhasil disimpan.'
+            : 'Pesan berhasil dikirim ke panitia.';
     } catch (Throwable $exception) {
         report($exception);
 
