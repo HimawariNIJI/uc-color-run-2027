@@ -17,6 +17,15 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
+    
+    public function isUcMember(): bool
+    {
+        $email = strtolower($this->email);
+
+        return str_ends_with($email, '@ciputra.ac.id')
+            || str_ends_with($email, '@student.ciputra.ac.id');
+    }
+
     /**
      * Get the attributes that should be cast.
      *
