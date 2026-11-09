@@ -2,55 +2,61 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\FeePeriod;
-use App\Support\EarlyBirdQuota;
+use App\Models\Payment;
+use App\Models\Registration;
+use App\Support\Midtrans;
+use App\Support\QrisCheckout;
 use App\Support\Rupiah;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 /**
- * QRIS payment flow. The payment gateway is not connected yet, so the QR code is a
- * placeholder and payments are confirmed through the local simulation endpoint.
+ * Midtrans QRIS payment pages. A registration only counts as paid once Midtrans confirms it,
+ * through a verified notification or a status check made from the server; nothing the browser
+ * sends can mark it paid.
  */
 class PaymentController extends Controller
 {
     public function show(Request $request): View|RedirectResponse
     {
         $registration = $request->user()->registration;
+        $payment = $this->currentPayment($registration);
 
         if ($registration->isPaid()) {
             return to_route('payment.success');
         }
 
-        if ($registration->hasFailedPayment()) {
+        if ($registration->hasFailedPayment() || $registration->paymentHasExpired()) {
             return to_route('payment.failed');
         }
 
-        if ($registration->paymentHasExpired()) {
-            $registration->openPaymentWindow();
-        }
+        $expiresAt = $payment?->expires_at ?? $registration->payment_expires_at;
 
         return view('payment.show', [
             'registration' => $registration,
-            'secondsLeft' => max(0, (int) now()->diffInSeconds($registration->payment_expires_at, false)),
-            'canSimulatePayment' => app()->isLocal(),
+            'payment' => $payment,
+            'qrSvg' => $payment?->isActive() ? $payment->qrSvg(260) : null,
+            'expiresAt' => $expiresAt,
+            'secondsLeft' => max(0, (int) now()->diffInSeconds($expiresAt, false)),
+            'canCreateQris' => Midtrans::isConfigured() && ! $payment?->isActive(),
+            'canSimulatePayment' => app()->isLocal() && ! Midtrans::isConfigured(),
         ]);
     }
 
+    /**
+     * "Cek Status Pembayaran": ask Midtrans directly instead of waiting for its notification.
+     */
     public function check(Request $request): RedirectResponse
     {
-        $registration = $request->user()->registration;
+        $registration = $this->checkedRegistration($request);
 
         if ($registration->isPaid()) {
             return to_route('payment.success');
         }
 
-        if ($registration->paymentHasExpired()) {
-            $registration->markAsFailed();
-        }
-
-        if ($registration->hasFailedPayment()) {
+        if ($registration->hasFailedPayment() || $registration->paymentHasExpired()) {
             return to_route('payment.failed');
         }
 
@@ -58,42 +64,56 @@ class PaymentController extends Controller
             ->with('info', 'Pembayaran belum kami terima. Selesaikan pembayaran, lalu cek kembali statusnya.');
     }
 
+    /**
+     * Polled by the payment page, so it moves on as soon as Midtrans confirms the payment.
+     */
+    public function status(Request $request): JsonResponse
+    {
+        $registration = $this->checkedRegistration($request);
+
+        [$status, $redirect] = match (true) {
+            $registration->isPaid() => ['paid', route('payment.success')],
+            $registration->hasFailedPayment(), $registration->paymentHasExpired() => ['failed', route('payment.failed')],
+            default => ['pending', null],
+        };
+
+        return response()->json(['status' => $status, 'redirect' => $redirect]);
+    }
+
+    /**
+     * Start a new QRIS after a failed or expired one. Never creates a second QRIS while one can
+     * still be scanned, and claims a slot again first, at the package's current price.
+     */
     public function retry(Request $request): RedirectResponse
     {
         $registration = $request->user()->registration;
+        $payment = $this->currentPayment($registration);
 
         if ($registration->isPaid()) {
             return to_route('payment.success');
         }
 
-        // A failed payment gave its Early Bird slot back; claim it again or fall back to Normal Price.
-        if ($registration->hasFailedPayment() && $registration->fee_period === FeePeriod::EarlyBird) {
-            $keptEarlyBird = EarlyBirdQuota::whileLocked($registration->category, function () use ($registration): bool {
-                if (EarlyBirdQuota::isAvailable($registration->category)) {
-                    $registration->openPaymentWindow();
-
-                    return true;
-                }
-
-                $registration->forceFill([
-                    'fee_period' => FeePeriod::Regular,
-                    'amount' => $registration->category->feeFor($registration->type, FeePeriod::Regular),
-                ])->save();
-                $registration->openPaymentWindow();
-
-                return false;
-            });
-
-            if (! $keptEarlyBird) {
-                return to_route('payment.show')->with('info', "Slot Early Bird untuk {$registration->category->distance()} sudah habis, sehingga biaya registrasimu disesuaikan ke Normal Price (".Rupiah::format($registration->amount).').');
-            }
-
+        if ($payment?->isActive()) {
             return to_route('payment.show');
         }
 
-        $registration->openPaymentWindow();
+        $moved = false;
 
-        return to_route('payment.show');
+        if ($registration->hasFailedPayment() || $registration->paymentHasExpired()) {
+            ['opened' => $opened, 'moved' => $moved, 'message' => $message] = QrisCheckout::reopen($registration);
+
+            if (! $opened) {
+                return to_route('payment.failed')->with('error', $message);
+            }
+        }
+
+        if ($error = QrisCheckout::start($registration)) {
+            return to_route('payment.failed')->with('error', $error);
+        }
+
+        return to_route('payment.show')->with('info', $moved
+            ? "Kuota Early Bid sudah habis, sehingga registrasimu dipindahkan ke {$registration->packageName()} (".Rupiah::format($registration->amount).').'
+            : null);
     }
 
     public function success(Request $request): View|RedirectResponse
@@ -105,7 +125,7 @@ class PaymentController extends Controller
         }
 
         return view('payment.success', [
-            'registration' => $registration,
+            'registration' => $registration->load('members'),
         ]);
     }
 
@@ -124,5 +144,33 @@ class PaymentController extends Controller
         return view('payment.failed', [
             'registration' => $registration,
         ]);
+    }
+
+    /**
+     * The latest payment attempt, refreshed with Midtrans once its QRIS has expired.
+     */
+    private function currentPayment(Registration $registration): ?Payment
+    {
+        $payment = $registration->latestPayment;
+
+        if ($payment?->isPending() && $payment->hasExpired()) {
+            QrisCheckout::refresh($payment);
+            $registration->refresh();
+        }
+
+        return $payment?->fresh();
+    }
+
+    private function checkedRegistration(Request $request): Registration
+    {
+        $registration = $request->user()->registration;
+        $payment = $registration->latestPayment;
+
+        if (! $registration->isPaid() && $payment?->isPending()) {
+            QrisCheckout::refresh($payment);
+            $registration->refresh();
+        }
+
+        return $registration;
     }
 }

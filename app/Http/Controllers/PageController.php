@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Support\EarlyBirdQuota;
+use App\Enums\FeePeriod;
+use App\Models\TicketPrice;
 use App\Support\EventSchedule;
 use App\Support\YouTube;
 use Illuminate\View\View;
@@ -11,10 +12,13 @@ class PageController extends Controller
 {
     public function home(): View
     {
+        $openPackages = TicketPrice::catalogue()->filter->isOpen();
+
         return view('pages.home', [
             'raceDay' => EventSchedule::raceDay(),
             'venue' => config('event.venue'),
-            'isEarlyBirdAvailable' => EarlyBirdQuota::isAvailableForAny(),
+            'isEarlyBidOpen' => $openPackages->contains(fn (TicketPrice $package): bool => $package->price_type === FeePeriod::EarlyBird),
+            'isAnyPackageOpen' => $openPackages->isNotEmpty(),
             'timeline' => EventSchedule::timeline(),
             'sponsors' => config('event.sponsors'),
             'bannerImage' => config('event.banner_image'),

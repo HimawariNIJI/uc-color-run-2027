@@ -14,7 +14,7 @@ class SessionController extends Controller
     {
         return view('auth.sign-in', [
             'isGoogleConfigured' => GoogleAuthController::isConfigured(),
-            'canSignInLocally' => LocalSignInController::isEnabled(),
+            'showsSetupHint' => app()->isLocal(),
         ]);
     }
 

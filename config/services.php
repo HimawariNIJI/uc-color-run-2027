@@ -41,4 +41,17 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI', '/auth/google/callback'),
     ],
 
+    // Midtrans QRIS through the Core API (see App\Support\Midtrans). Keep is_production false for
+    // sandbox keys. is_sanitized and is_3ds are Snap/card settings that a QRIS-only Core API
+    // charge does not use; they are mapped so the full Midtrans setup lives in one place.
+    'midtrans' => [
+        'is_production' => (bool) env('MIDTRANS_IS_PRODUCTION', false),
+        'server_key' => env('MIDTRANS_SERVER_KEY'),
+        'client_key' => env('MIDTRANS_CLIENT_KEY'),
+        'merchant_id' => env('MIDTRANS_MERCHANT_ID'),
+        'is_sanitized' => (bool) env('MIDTRANS_IS_SANITIZED', true),
+        'is_3ds' => (bool) env('MIDTRANS_IS_3DS', true),
+        'qris_acquirer' => env('MIDTRANS_QRIS_ACQUIRER', 'gopay'),
+    ],
+
 ];

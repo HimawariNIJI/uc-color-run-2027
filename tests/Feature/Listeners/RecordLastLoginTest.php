@@ -2,15 +2,16 @@
 
 use App\Models\Admin;
 use App\Models\User;
-use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
+use Laravel\Socialite\Socialite;
+use Laravel\Socialite\Two\User as SocialiteUser;
 
 it('records when a participant signs in', function () {
     $this->freezeSecond();
-    $this->app['env'] = 'local';
-    $this->withoutMiddleware(PreventRequestForgery::class);
-    $user = User::factory()->create(['email' => 'rina@example.com', 'last_login_at' => null]);
+    config(['services.google.client_id' => 'test-client-id', 'services.google.client_secret' => 'test-client-secret']);
+    $user = User::factory()->create(['google_id' => 'google-123', 'email' => 'rina@example.com', 'last_login_at' => null]);
+    Socialite::fake('google', SocialiteUser::fake(['id' => 'google-123', 'email' => 'rina@example.com', 'email_verified' => true]));
 
-    $this->post(route('login.local'), ['name' => 'Rina', 'email' => 'rina@example.com']);
+    $this->get(route('auth.google.callback'));
 
     expect($user->fresh()->last_login_at)->toEqual(now());
 });

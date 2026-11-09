@@ -34,6 +34,16 @@ class UserFactory extends Factory
     }
 
     /**
+     * A Universitas Ciputra student address, eligible for Internal registration.
+     */
+    public function ucEmail(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'email' => fake()->unique()->userName().'@student.ciputra.ac.id',
+        ]);
+    }
+
+    /**
      * Indicate that the model's email address should be unverified.
      */
     public function unverified(): static

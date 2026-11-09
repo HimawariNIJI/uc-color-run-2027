@@ -2,7 +2,9 @@
 
 @php
     $id = $attributes->get('id', $name);
-    $hasError = $errors->has($name);
+    // Array names such as members[0][full_name] are looked up as members.0.full_name.
+    $key = str_replace(['[', ']'], ['.', ''], $name);
+    $hasError = $errors->has($key);
 @endphp
 
 <div class="relative">
@@ -10,7 +12,7 @@
         type="{{ $type }}"
         name="{{ $name }}"
         id="{{ $id }}"
-        value="{{ old($name, $value) }}"
+        value="{{ old($key, $value) }}"
         @if ($hasError) aria-invalid="true" aria-describedby="{{ $id }}-error" @endif
         {{ $attributes->except('id')->class([
             'form-control h-12',

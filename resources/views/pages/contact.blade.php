@@ -8,24 +8,31 @@
                         Punya pertanyaan seputar registrasi, pembayaran, atau hari lomba? Kirim pesan dan panitia akan membalas melalui email.
                     </p>
 
-                    <form method="POST" action="{{ route('contact.store') }}" class="mt-6 flex flex-col gap-4" novalidate data-submit-guard>
-                        @csrf
+                    @auth
+                        <form method="POST" action="{{ route('contact.store') }}" class="mt-6 flex flex-col gap-4" novalidate data-submit-guard>
+                            @csrf
 
-                        <div class="grid gap-4 sm:grid-cols-2">
                             <x-form.field label="Full Name" for="name">
-                                <x-form.input name="name" :value="auth()->user()?->name" placeholder="Enter your name" autocomplete="name" pill required />
+                                <x-form.input name="name" :value="auth()->user()->name" placeholder="Enter your name" autocomplete="name" pill required />
                             </x-form.field>
-                            <x-form.field label="Email Address" for="email">
-                                <x-form.input type="email" name="email" :value="auth()->user()?->email" placeholder="you@example.com" autocomplete="email" pill required />
+
+                            {{-- Shown for reference only: it has no name, so it is never submitted. The server uses the account email. --}}
+                            <x-form.field label="Email Address" for="email" hint="Diambil dari akun Google kamu dan tidak dapat diubah.">
+                                <input type="email" id="email" value="{{ auth()->user()->email }}" readonly aria-describedby="email-hint" class="form-control h-12 cursor-default rounded-full px-5 text-muted">
                             </x-form.field>
+
+                            <x-form.field label="Message" for="message">
+                                <x-form.textarea name="message" rows="5" placeholder="How can we help you?" required />
+                            </x-form.field>
+
+                            <x-button type="submit" pill block class="mt-1" data-busy-label="Mengirim…">Submit</x-button>
+                        </form>
+                    @else
+                        <div class="mt-6 flex flex-col gap-3">
+                            <x-google-sign-in-button :return-to="route('contact', absolute: false)" />
+                            <p class="text-center text-caption text-muted">Masuk dengan akun Google untuk mengirim pesan. Setelah masuk, kamu akan kembali ke halaman ini.</p>
                         </div>
-
-                        <x-form.field label="Message" for="message">
-                            <x-form.textarea name="message" rows="5" placeholder="How can we help you?" required />
-                        </x-form.field>
-
-                        <x-button type="submit" pill block class="mt-1" data-busy-label="Mengirim…">Submit</x-button>
-                    </form>
+                    @endauth
                 </div>
 
                 <x-media

@@ -3,8 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\RaceCategory;
-use App\Enums\RegistrationType;
-use App\Support\EarlyBirdQuota;
+use App\Models\TicketPrice;
 use App\Support\EventSchedule;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -16,8 +15,7 @@ class RaceInfoController extends Controller
         return view('race.category', [
             'categories' => RaceCategory::cases(),
             'selectedCategory' => RaceCategory::tryFrom((string) $request->query('category')) ?? RaceCategory::ThreeK,
-            'registrationTypes' => RegistrationType::cases(),
-            'earlyBirdSlotsLeft' => EarlyBirdQuota::remaining(),
+            'packages' => TicketPrice::catalogue(),
             'raceDay' => EventSchedule::raceDay(),
         ]);
     }

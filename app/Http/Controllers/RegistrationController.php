@@ -5,45 +5,68 @@ namespace App\Http\Controllers;
 use App\Enums\FeePeriod;
 use App\Enums\RaceCategory;
 use App\Enums\RegistrationType;
+use App\Http\Requests\BundleRegistrationRequest;
 use App\Http\Requests\RegistrationRequest;
 use App\Models\Registration;
+use App\Models\TicketPrice;
 use App\Models\User;
-use App\Support\EarlyBirdQuota;
+use App\Support\BibNumber;
 use App\Support\IndonesiaRegions;
+use App\Support\QrisCheckout;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 /**
- * Registration steps: type → price type (Early Bird / Normal Price) → distance → participant form.
+ * Registration steps for the official packages in ticket_prices:
+ * type → price type (Early Bid / Normal Bid) → distance → participant form, or Bundling → bundle form.
+ * Submitting a valid form creates the registration and its Midtrans QRIS straight away.
  */
 class RegistrationController extends Controller
 {
+    /**
+     * Internal is only listed for participants signed in with a verified Universitas Ciputra email.
+     */
     public function chooseType(Request $request): View|RedirectResponse
     {
-        if ($redirect = $this->redirectIfAlreadyRegistered($request->user())) {
+        $user = $request->user();
+
+        if ($redirect = $this->redirectIfAlreadyRegistered($user)) {
             return $redirect;
         }
 
         return view('registration.choose-type', [
-            'registrationTypes' => RegistrationType::cases(),
+            'registrationTypes' => $user->registrationTypes(),
+            'isEligibleForInternal' => $user->isEligibleForInternal(),
+            'email' => $user->email,
         ]);
     }
 
+    /**
+     * Individual types choose Early Bid or Normal Bid; Bundling lists the bundle packages.
+     */
     public function choosePriceType(Request $request, RegistrationType $type): View|RedirectResponse
     {
         if ($redirect = $this->redirectIfAlreadyRegistered($request->user())) {
             return $redirect;
         }
 
-        $isEarlyBirdAvailable = EarlyBirdQuota::isAvailableForAny();
+        $packages = TicketPrice::catalogue()->filter(fn (TicketPrice $package): bool => $package->registration_type === $type);
+
+        if ($type === RegistrationType::Bundling) {
+            return view('registration.choose-bundle', [
+                'registrationType' => $type,
+                'bundles' => $packages->values(),
+            ]);
+        }
 
         return view('registration.choose-price', [
             'registrationType' => $type,
             'priceTypes' => collect(FeePeriod::cases())->map(fn (FeePeriod $period): array => [
                 'period' => $period,
-                'fees' => collect(RaceCategory::cases())->map(fn (RaceCategory $category): int => $category->feeFor($type, $period)),
-                'isAvailable' => $period !== FeePeriod::EarlyBird || $isEarlyBirdAvailable,
+                'packages' => $packages->filter(fn (TicketPrice $package): bool => $package->price_type === $period)->values(),
             ]),
         ]);
     }
@@ -54,50 +77,94 @@ class RegistrationController extends Controller
             return $redirect;
         }
 
-        $slotsLeft = $priceType === FeePeriod::EarlyBird ? EarlyBirdQuota::remaining() : null;
+        $packages = TicketPrice::catalogue()
+            ->filter(fn (TicketPrice $package): bool => $package->registration_type === $type && $package->price_type === $priceType)
+            ->values();
 
-        if ($slotsLeft !== null && array_sum($slotsLeft) === 0) {
+        // Bundles have no price type, so there is no such page for them.
+        abort_if($packages->isEmpty(), 404);
+
+        if ($packages->every->isSoldOut()) {
             return to_route('registration.price', $type)
-                ->with('error', 'Slot Early Bird sudah habis untuk semua jarak lari. Silakan pilih Normal Price.');
+                ->with('error', "Kuota {$priceType->label()} {$type->label()} sudah habis untuk semua jarak lari. Silakan pilih tipe harga lain.");
         }
 
         return view('registration.choose-category', [
             'registrationType' => $type,
             'priceType' => $priceType,
-            'categories' => RaceCategory::cases(),
-            'slotsLeft' => $slotsLeft,
+            'packages' => $packages,
         ]);
     }
 
     public function create(Request $request, RegistrationType $type, FeePeriod $priceType, RaceCategory $category): View|RedirectResponse
     {
-        $user = $request->user();
-
-        if ($redirect = $this->redirectIfAlreadyRegistered($user)) {
+        if ($redirect = $this->redirectIfAlreadyRegistered($request->user())) {
             return $redirect;
         }
 
-        if ($priceType === FeePeriod::EarlyBird && ! EarlyBirdQuota::isAvailable($category)) {
-            return to_route('registration.category', [$type, $priceType->slug()])
-                ->with('error', "Slot Early Bird untuk {$category->distance()} sudah habis. Pilih jarak lain atau Normal Price.");
+        $package = TicketPrice::findOption($type, $priceType, $category) ?? abort(404);
+
+        if (! $package->isOpen()) {
+            return to_route('registration.category', [$type, $priceType->slug()])->with('error', $package->unavailableMessage());
         }
 
+        return $this->form($request->user(), $package, route('registration.store', [$type, $priceType->slug(), $category]));
+    }
+
+    public function store(RegistrationRequest $request, RegistrationType $type, FeePeriod $priceType, RaceCategory $category): RedirectResponse
+    {
+        $package = TicketPrice::findOption($type, $priceType, $category) ?? abort(404);
+
+        return $this->register($request, $package, $request->safe()->except('agreement'));
+    }
+
+    public function createBundle(Request $request, string $bundle): View|RedirectResponse
+    {
+        if ($redirect = $this->redirectIfAlreadyRegistered($request->user())) {
+            return $redirect;
+        }
+
+        $package = TicketPrice::findBundle($bundle) ?? abort(404);
+
+        if (! $package->isOpen()) {
+            return to_route('registration.price', RegistrationType::Bundling)->with('error', $package->unavailableMessage());
+        }
+
+        return $this->form($request->user(), $package, route('registration.bundle.store', $bundle));
+    }
+
+    public function storeBundle(BundleRegistrationRequest $request, string $bundle): RedirectResponse
+    {
+        $package = TicketPrice::findBundle($bundle) ?? abort(404);
+
+        return $this->register($request, $package, $request->safe()->except(['agreement', 'members']), $request->members());
+    }
+
+    private function form(User $user, TicketPrice $package, string $action): View
+    {
         return view('registration.form', [
             'registration' => new Registration([
-                'type' => $type,
-                'category' => $category,
+                'type' => $package->registration_type,
+                'category' => $package->race_category,
                 'full_name' => $user->name,
                 'email' => $user->email,
             ]),
-            'amount' => $category->feeFor($type, $priceType),
-            'feePeriod' => $priceType,
+            'package' => $package,
             'regions' => IndonesiaRegions::all(),
-            'action' => route('registration.store', [$type, $priceType->slug(), $category]),
+            'action' => $action,
             'method' => 'POST',
         ]);
     }
 
-    public function store(RegistrationRequest $request, RegistrationType $type, FeePeriod $priceType, RaceCategory $category): RedirectResponse
+    /**
+     * Create the registration while the package row is locked, so simultaneous sign-ups can never
+     * exceed its quota or receive the same number. The amount is the package's price in the
+     * database and the email is the signed-in account's; nothing from the browser decides either.
+     *
+     * @param  array<string, mixed>  $participant  validated account holder fields
+     * @param  list<array<string, mixed>>  $members  validated bundle members
+     */
+    private function register(RegistrationRequest $request, TicketPrice $package, array $participant, array $members = []): RedirectResponse
     {
         $user = $request->user();
 
@@ -105,30 +172,75 @@ class RegistrationController extends Controller
             return $redirect;
         }
 
-        $register = fn (): Registration => $user->registration()->create([
-            ...$request->safe()->except('agreement'),
-            'type' => $type,
-            'category' => $category,
-            'email' => $user->email,
-            'amount' => $category->feeFor($type, $priceType),
-            'fee_period' => $priceType,
-        ]);
+        try {
+            $registration = DB::transaction(function () use ($package, $participant, $members, $user): ?Registration {
+                $locked = $package->lockForRegistration();
 
-        $registration = $priceType === FeePeriod::EarlyBird
-            ? EarlyBirdQuota::whileLocked($category, fn (): ?Registration => EarlyBirdQuota::isAvailable($category) ? $register() : null)
-            : $register();
+                if (! $locked->isOpen()) {
+                    return null;
+                }
 
-        // The last Early Bird slot was taken while the participant filled the form.
-        if ($registration === null) {
-            return to_route('registration.create', [$type, FeePeriod::Regular->slug(), $category])
-                ->withInput($request->except('agreement'))
-                ->with('error', "Maaf, slot Early Bird untuk {$category->distance()} baru saja habis. Datamu masih tersimpan di formulir ini dengan Normal Price. Periksa kembali lalu kirim ulang.");
+                $registration = $user->registration()->create([
+                    ...$participant,
+                    'ticket_price_id' => $locked->getKey(),
+                    'code' => BibNumber::registrationCode(BibNumber::next($locked->bibPrefix())),
+                    'type' => $locked->registration_type,
+                    'category' => $locked->race_category,
+                    'fee_period' => $locked->price_type,
+                    'email' => $user->email,
+                    'amount' => $locked->price,
+                ]);
+
+                $registration->members()->createMany($members);
+                $registration->openPaymentWindow();
+
+                return $registration;
+            });
+        } catch (UniqueConstraintViolationException $exception) {
+            // A double submit: the first request already created this account's registration.
+            if ($user->registration()->exists()) {
+                return to_route('payment.show');
+            }
+
+            throw $exception;
         }
 
-        $registration->openPaymentWindow();
+        if ($registration === null) {
+            return $this->packageClosedDuringSignUp($request, $package);
+        }
+
+        if ($error = QrisCheckout::start($registration)) {
+            return to_route('payment.failed')->with('error', $error);
+        }
 
         return to_route('payment.show')
-            ->with('success', 'Registrasi berhasil dikirim. Selesaikan pembayaran untuk mengamankan slotmu.');
+            ->with('success', 'Registrasi berhasil dikirim. Scan QRIS di bawah untuk menyelesaikan pembayaran.');
+    }
+
+    /**
+     * The package closed while the participant filled the form, usually because its last slot was
+     * taken. An Early Bid participant keeps their data on the Normal Bid form when that is open.
+     */
+    private function packageClosedDuringSignUp(RegistrationRequest $request, TicketPrice $package): RedirectResponse
+    {
+        $current = $package->fresh() ?? $package;
+        $message = $current->unavailableMessage() ?? 'Paket ini sedang tidak tersedia.';
+
+        if ($package->isBundle()) {
+            return to_route('registration.price', RegistrationType::Bundling)->with('error', $message);
+        }
+
+        $normalBid = $package->price_type === FeePeriod::EarlyBird
+            ? TicketPrice::findOption($package->registration_type, FeePeriod::Regular, $package->race_category)
+            : null;
+
+        if ($normalBid?->isOpen()) {
+            return to_route('registration.create', [$package->registration_type, FeePeriod::Regular->slug(), $package->race_category])
+                ->withInput($request->except('agreement'))
+                ->with('error', "Maaf, kuota {$package->name()} {$package->registration_type->label()} baru saja habis. Datamu masih tersimpan di formulir ini dengan Normal Bid. Periksa kembali lalu kirim ulang.");
+        }
+
+        return to_route('registration.category', [$package->registration_type, $package->price_type->slug()])->with('error', $message);
     }
 
     private function redirectIfAlreadyRegistered(?User $user): ?RedirectResponse

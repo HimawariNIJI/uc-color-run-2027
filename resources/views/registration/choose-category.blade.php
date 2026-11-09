@@ -1,6 +1,3 @@
-@use('App\Support\NumberFormat')
-@use('App\Support\Rupiah')
-
 <x-layouts.app title="Pilih Jarak Lari" description="Pilih kategori jarak lari UC Color Run 2027: 3 KM, 5 KM, atau 10 KM.">
     <div class="page-container page-section">
         <x-panel>
@@ -14,23 +11,18 @@
                 <a href="{{ route('registration.price', $registrationType) }}" class="font-semibold text-primary hover:underline">Ganti</a>
             </p>
 
+            @unless ($packages->contains->isOpen())
+                <x-alert tone="info" class="mt-6">Paket pada tipe harga ini belum dibuka untuk pendaftaran. Paket dan kuota di bawah sudah resmi.</x-alert>
+            @endunless
+
             <div class="mt-6 flex flex-col gap-4 md:mt-8 md:gap-5">
-                @foreach ($categories as $category)
-                    @php
-                        // Only Early Bird has limited slots; Normal Price shows no slot status.
-                        $slotsLeftForCategory = $slotsLeft[$category->value] ?? null;
-                        $slotStatus = match (true) {
-                            $slotsLeftForCategory === null => null,
-                            $slotsLeftForCategory > 0 => 'Sisa '.NumberFormat::integer($slotsLeftForCategory).' slot',
-                            default => 'Sold out',
-                        };
-                    @endphp
+                @foreach ($packages as $package)
                     <x-choice-card
-                        :href="route('registration.create', [$registrationType, $priceType->slug(), $category])"
-                        :title="$category->distance()"
-                        :meta="$priceType->label().' · '.Rupiah::format($category->feeFor($registrationType, $priceType))"
-                        :status="$slotStatus"
-                        :disabled="$slotsLeftForCategory === 0"
+                        :href="route('registration.create', [$registrationType, $priceType->slug(), $package->race_category])"
+                        :title="$package->race_category->distance()"
+                        :meta="$package->name().' '.$package->eligibility().' · '.$package->priceLabel()"
+                        :status="$package->quotaLabel()"
+                        :disabled="! $package->isOpen()"
                     />
                 @endforeach
             </div>

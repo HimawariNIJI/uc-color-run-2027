@@ -14,6 +14,13 @@
                     />
                 @endforeach
             </div>
+
+            @unless ($isEligibleForInternal)
+                <p class="mt-6 text-center text-caption text-muted">
+                    Kategori Internal khusus akun Google dengan email Universitas Ciputra (ciputra.ac.id).
+                    Kamu masuk sebagai <span class="font-semibold text-foreground">{{ $email }}</span>.
+                </p>
+            @endunless
         </x-panel>
     </div>
 </x-layouts.app>

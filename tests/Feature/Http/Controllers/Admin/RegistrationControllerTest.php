@@ -68,12 +68,12 @@ it('shows every detail of a paid registration with its racepack QR code', functi
         ->assertSeeInOrder([
             'Registration Details', $registration->code,
             '1. Personal Information', 'Ethan Cannavaro Lauda', 'ethan@example.com', '0812345678', '17 Oktober 2000', 'Laki-laki', '1234567890',
-            '2. Race Information', '10K', 'External', 'Early Bird', 'XL', 'Edward', '0812999888',
+            '2. Race Information', '10K', 'External', 'Early Bid', 'XL', 'Edward', '0812999888',
             '3. Address Information', 'Jawa Timur', 'Kota Surabaya', 'Jl. Raya CitraLand',
             '4. Registration Information', '20 Okt 2026', 'Rp150.000', '20 Okt 2026', 'Paid', 'PAY-UCR-2027-ABCDE', '10024', 'Belum diambil',
-            '5. QR Code',
+            '5. QR Code', 'BIB Pickup QR', 'Coming Soon',
         ])
-        ->assertSee('<svg', false);
+        ->assertDontSee($registration->racepackPayload());
 });
 
 it('explains that the QR code appears once the registration is paid', function () {

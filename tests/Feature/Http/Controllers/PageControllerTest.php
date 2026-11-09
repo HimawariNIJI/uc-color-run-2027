@@ -1,6 +1,6 @@
 <?php
 
-use App\Models\Registration;
+use App\Models\TicketPrice;
 use App\Models\User;
 use App\Support\BrandAsset;
 
@@ -20,21 +20,27 @@ it('renders every public page', function (string $routeName, string $expectedTex
     'sign in' => ['login', 'Sign In'],
 ]);
 
-it('promotes early bird pricing while early bird slots are left', function () {
-    config(['event.early_bird_slots' => ['3k' => 0, '5k' => 1, '10k' => 0]]);
+it('says prices are coming while no package has a price', function () {
+    TicketPrice::query()->update(['price' => null]);
 
     $this->get(route('home'))
         ->assertOk()
-        ->assertSee('Slot Early Bird masih tersedia, amankan harga spesialmu sekarang.');
+        ->assertSee('Paket dan kuota resmi sudah diumumkan. Harga akan segera diumumkan, pantau terus!')
+        ->assertDontSee('Slot Early Bid masih tersedia');
 });
 
-it('drops the early bird message once every early bird slot is taken', function () {
-    config(['event.early_bird_slots' => ['3k' => 0, '5k' => 1, '10k' => 0]]);
-    Registration::factory()->paid()->create(['category' => '5k']);
+it('promotes Early Bid while an Early Bid package is open', function () {
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertSee('Slot Early Bid masih tersedia, amankan harga spesialmu sekarang.');
+});
+
+it('drops the Early Bid message once every Early Bid package is full', function () {
+    TicketPrice::query()->where('price_type', 'early_bird')->update(['quota' => 0]);
 
     $this->get(route('home'))
         ->assertOk()
-        ->assertDontSee('Slot Early Bird masih tersedia')
+        ->assertDontSee('Slot Early Bid masih tersedia')
         ->assertSee('Daftar sekarang dan amankan slotmu di garis start.');
 });
 

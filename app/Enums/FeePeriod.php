@@ -3,27 +3,27 @@
 namespace App\Enums;
 
 /**
- * The price type a participant picks while registering. Early Bird has a limited number of
- * slots per race category (see EarlyBirdQuota). The "regular" value is shown as "Normal Price".
+ * The price type of an individual package: Early Bid or Normal Bid (official names). Every
+ * package has its own quota (see TicketPrice). Bundles have no price type.
  */
 enum FeePeriod: string
 {
     case EarlyBird = 'early_bird';
-    case Regular = 'regular';
+    case Regular = 'normal';
 
     public function label(): string
     {
         return match ($this) {
-            self::EarlyBird => 'Early Bird',
-            self::Regular => 'Normal Price',
+            self::EarlyBird => 'Early Bid',
+            self::Regular => 'Normal Bid',
         };
     }
 
     public function description(): string
     {
         return match ($this) {
-            self::EarlyBird => 'Harga spesial dengan slot terbatas untuk setiap jarak lari.',
-            self::Regular => 'Harga normal yang berlaku selama pendaftaran dibuka.',
+            self::EarlyBird => 'Harga spesial dengan kuota terbatas untuk setiap paket.',
+            self::Regular => 'Harga normal setelah Early Bid, dengan kuota per paket.',
         };
     }
 

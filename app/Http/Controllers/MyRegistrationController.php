@@ -28,8 +28,7 @@ class MyRegistrationController extends Controller
 
         return view('registration.form', [
             'registration' => $registration,
-            'amount' => $registration->amount,
-            'feePeriod' => $registration->fee_period,
+            'package' => $registration->package(),
             'regions' => IndonesiaRegions::all(),
             'action' => route('my-registration.update'),
             'method' => 'PUT',

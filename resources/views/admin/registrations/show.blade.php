@@ -15,7 +15,8 @@
                     <x-admin.detail-section title="2. Race Information">
                         <x-admin.detail-item label="Race Category">{{ $registration->category->label() }}</x-admin.detail-item>
                         <x-admin.detail-item label="Registration Type">{{ $registration->type->label() }}</x-admin.detail-item>
-                        <x-admin.detail-item label="Price Type">{{ $registration->fee_period->label() }}</x-admin.detail-item>
+                        <x-admin.detail-item label="Price Type">{{ $registration->fee_period?->label() ?? 'Bundle' }}</x-admin.detail-item>
+                        <x-admin.detail-item label="Package">{{ $registration->packageName() }}</x-admin.detail-item>
                         <x-admin.detail-item label="T-shirt Size">{{ $registration->tshirt_size->value }}</x-admin.detail-item>
                         <x-admin.detail-item label="Emergency Contact Name">{{ $registration->emergency_contact_name }}</x-admin.detail-item>
                         <x-admin.detail-item label="Emergency Contact Phone">{{ $registration->emergency_contact_phone }}</x-admin.detail-item>
@@ -45,13 +46,19 @@
                         </x-admin.detail-item>
                     </x-admin.detail-section>
 
+                    @if ($registration->members->isNotEmpty())
+                        <x-admin.detail-section title="Bundle Members">
+                            @foreach ($registration->members as $member)
+                                <x-admin.detail-item :label="'Peserta '.$member->position">{{ $member->full_name }} · {{ $member->tshirt_size->value }} · BIB {{ $member->bib_number ?? '-' }}</x-admin.detail-item>
+                            @endforeach
+                        </x-admin.detail-section>
+                    @endif
+
                     <section class="border-t border-border pt-6">
                         <h3 class="text-body font-bold">5. QR Code</h3>
-                        @if ($racepackQrSvg)
+                        @if ($registration->isPaid())
                             <div class="mt-4 inline-block rounded-2xl border border-border bg-white p-3">
-                                <div class="size-40 [&>svg]:size-full" role="img" aria-label="QR code racepack {{ $registration->code }}">
-                                    {!! $racepackQrSvg !!}
-                                </div>
+                                <x-racepack-qr-placeholder size="size-40" />
                             </div>
                         @else
                             <div class="mt-4 flex size-40 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-background p-4 text-center">

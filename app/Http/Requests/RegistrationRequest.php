@@ -15,7 +15,9 @@ use Illuminate\Validation\Rules\Enum;
  */
 class RegistrationRequest extends FormRequest
 {
-    private const PHONE_PATTERN = '/^(\+62|62|0)8[0-9]{7,12}$/';
+    protected const PHONE_PATTERN = '/^(\+62|62|0)8[0-9]{7,12}$/';
+
+    protected const IDENTITY_PATTERN = '/^[A-Za-z0-9]{6,20}$/';
 
     /**
      * Determine if the user is authorized to make this request.
@@ -49,7 +51,7 @@ class RegistrationRequest extends FormRequest
             'phone' => ['required', 'string', 'regex:'.self::PHONE_PATTERN],
             'birth_date' => ['required', 'date', 'before:today', 'after:1920-01-01'],
             'gender' => ['required', Rule::enum(Gender::class)],
-            'identity_number' => ['required', 'string', 'regex:/^[A-Za-z0-9]{6,20}$/'],
+            'identity_number' => ['required', 'string', 'regex:'.self::IDENTITY_PATTERN],
             'tshirt_size' => ['required', Rule::enum(TshirtSize::class)],
             'emergency_contact_name' => ['required', 'string', 'max:100'],
             'emergency_contact_phone' => ['required', 'string', 'regex:'.self::PHONE_PATTERN, 'different:phone'],

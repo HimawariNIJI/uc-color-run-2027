@@ -5,8 +5,10 @@
 
 @php
     $id = $attributes->get('id', $name);
-    $hasError = $errors->has($name);
-    $current = (string) old($name, $selected);
+    // Array names such as members[0][gender] are looked up as members.0.gender.
+    $key = str_replace(['[', ']'], ['.', ''], $name);
+    $hasError = $errors->has($key);
+    $current = (string) old($key, $selected);
 @endphp
 
 <div class="relative">

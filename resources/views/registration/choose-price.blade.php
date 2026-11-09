@@ -1,7 +1,4 @@
-@use('App\Enums\FeePeriod')
-@use('App\Support\Rupiah')
-
-<x-layouts.app title="Pilih Tipe Harga" description="Pilih harga Early Bird atau Normal Price untuk registrasi UC Color Run 2027.">
+<x-layouts.app title="Pilih Tipe Harga" description="Pilih paket Early Bid atau Normal Bid untuk registrasi UC Color Run 2027.">
     <div class="page-container page-section">
         <x-panel>
             <x-registration-steps :current="2" />
@@ -14,20 +11,33 @@
 
             <div class="mt-6 flex flex-col gap-4 md:mt-8 md:gap-5">
                 @foreach ($priceTypes as $option)
-                    @php($period = $option['period'])
+                    @php
+                        $period = $option['period'];
+                        $packages = $option['packages'];
+                        $prices = $packages->pluck('price');
+                        $isSoldOut = $packages->every->isSoldOut();
+                        $meta = $prices->contains(null)
+                            ? 'Price To Be Announced'
+                            : \App\Support\Rupiah::format($prices->min()).($prices->min() === $prices->max() ? '' : ' – '.\App\Support\Rupiah::format($prices->max()));
+                        $status = match (true) {
+                            $isSoldOut => 'Sold out',
+                            $packages->contains->isOpen() => 'Kuota terbatas',
+                            default => 'Belum dibuka',
+                        };
+                    @endphp
                     <x-choice-card
                         :href="route('registration.category', [$registrationType, $period->slug()])"
                         :title="$period->label()"
                         :description="$period->description()"
                         :icon="$period->icon()"
-                        :meta="Rupiah::format($option['fees']->min()).' – '.Rupiah::format($option['fees']->max())"
-                        :status="$period === FeePeriod::EarlyBird ? ($option['isAvailable'] ? 'Slot terbatas' : 'Sold out') : null"
-                        :disabled="! $option['isAvailable']"
+                        :meta="$meta"
+                        :status="$status"
+                        :disabled="$isSoldOut"
                     />
                 @endforeach
             </div>
 
-            <p class="mt-6 text-center text-body-sm text-muted">Harga akhir mengikuti jarak lari yang kamu pilih di langkah berikutnya.</p>
+            <p class="mt-6 text-center text-body-sm text-muted">Harga dan kuota mengikuti jarak lari yang kamu pilih di langkah berikutnya.</p>
         </x-panel>
     </div>
 </x-layouts.app>

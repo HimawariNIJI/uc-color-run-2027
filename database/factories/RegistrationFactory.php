@@ -10,6 +10,7 @@ use App\Enums\RegistrationType;
 use App\Enums\TshirtSize;
 use App\Models\Admin;
 use App\Models\Registration;
+use App\Models\TicketPrice;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -25,7 +26,7 @@ class RegistrationFactory extends Factory
      */
     public function definition(): array
     {
-        $type = fake()->randomElement(RegistrationType::cases());
+        $type = fake()->randomElement([RegistrationType::Internal, RegistrationType::External]);
         $category = fake()->randomElement(RaceCategory::cases());
 
         return [
@@ -44,7 +45,7 @@ class RegistrationFactory extends Factory
             'province' => 'Jawa Timur',
             'city' => 'Kota Surabaya',
             'address' => fake()->streetAddress(),
-            'amount' => $category->feeFor($type, FeePeriod::EarlyBird),
+            'amount' => 100000,
             'fee_period' => FeePeriod::EarlyBird,
             'payment_status' => PaymentStatus::Unpaid,
             'payment_expires_at' => now()->addHour(),
@@ -52,19 +53,40 @@ class RegistrationFactory extends Factory
     }
 
     /**
-     * Registered at the Normal Price instead of Early Bird.
+     * Link each registration to the seeded package matching its type, price type and distance.
+     */
+    public function configure(): static
+    {
+        return $this->afterMaking(function (Registration $registration): void {
+            if ($registration->ticket_price_id !== null) {
+                return;
+            }
+
+            $priceType = $registration->type === RegistrationType::Bundling ? null : $registration->fee_period;
+            $registration->ticket_price_id = TicketPrice::findOption($registration->type, $priceType, $registration->category)?->getKey();
+        });
+    }
+
+    /**
+     * A Family Bundle (3K) or Couple Bundle (5K) registration.
+     */
+    public function bundle(string $bundleType = 'family'): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'type' => RegistrationType::Bundling,
+            'category' => $bundleType === 'family' ? RaceCategory::ThreeK : RaceCategory::FiveK,
+            'fee_period' => null,
+        ]);
+    }
+
+    /**
+     * Registered for a Normal Bid package instead of Early Bid.
      */
     public function normalPrice(): static
     {
-        return $this->state(function (array $attributes): array {
-            $category = $attributes['category'] instanceof RaceCategory ? $attributes['category'] : RaceCategory::from($attributes['category']);
-            $type = $attributes['type'] instanceof RegistrationType ? $attributes['type'] : RegistrationType::from($attributes['type']);
-
-            return [
-                'fee_period' => FeePeriod::Regular,
-                'amount' => $category->feeFor($type, FeePeriod::Regular),
-            ];
-        });
+        return $this->state(fn (array $attributes) => [
+            'fee_period' => FeePeriod::Regular,
+        ]);
     }
 
     public function paid(): static

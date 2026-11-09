@@ -44,14 +44,6 @@ enum RaceCategory: string
     }
 
     /**
-     * Registration fee in Rupiah for the given type and price type.
-     */
-    public function feeFor(RegistrationType $type, FeePeriod $period): int
-    {
-        return (int) config("event.pricing.{$type->value}.{$this->value}.{$period->value}");
-    }
-
-    /**
      * Race details configured for this category.
      *
      * @return array{start_time: string, cut_off: string, tagline: string, route_image: ?string, photo: string}

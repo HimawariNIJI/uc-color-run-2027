@@ -46,7 +46,7 @@ class RegistrationExportController extends Controller
                 $registration->province,
                 $registration->city,
                 CsvExport::text($registration->address),
-                $registration->fee_period->label(),
+                $registration->fee_period?->label() ?? $registration->packageName(),
                 $registration->amount,
                 $registration->payment_status->label(),
                 $registration->created_at->format('Y-m-d H:i'),

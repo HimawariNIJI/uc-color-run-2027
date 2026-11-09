@@ -6,7 +6,6 @@ use App\Enums\PaymentStatus;
 use App\Enums\RaceCategory;
 use App\Http\Controllers\Controller;
 use App\Models\Registration;
-use App\Support\QrCode;
 use App\Support\RegistrationFilters;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -38,11 +37,11 @@ class RegistrationController extends Controller
      */
     public function show(Request $request, Registration $registration): View|string
     {
-        $registration->load('bibCollector:id,name');
+        $registration->load(['bibCollector:id,name', 'members']);
 
+        // The racepack pickup QR is not built yet; the page shows a "coming soon" placeholder.
         return view('admin.registrations.show', [
             'registration' => $registration,
-            'racepackQrSvg' => $registration->isPaid() ? QrCode::svg($registration->racepackPayload(), 200) : null,
         ])->fragmentIf($request->hasHeader('X-Admin-Modal'), 'details');
     }
 }

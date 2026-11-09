@@ -3,6 +3,8 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\RegistrationType;
+use App\Support\InternalEligibility;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -64,6 +66,29 @@ class User extends Authenticatable
     public function authenticationMethod(): string
     {
         return $this->google_id ? 'Google Sign-In' : 'Local Dev Sign-In';
+    }
+
+    /**
+     * Internal registration needs a Universitas Ciputra email that Google has verified.
+     */
+    public function isEligibleForInternal(): bool
+    {
+        return $this->hasVerifiedEmail() && InternalEligibility::isUcEmail($this->email);
+    }
+
+    public function canRegisterAs(RegistrationType $type): bool
+    {
+        return $type !== RegistrationType::Internal || $this->isEligibleForInternal();
+    }
+
+    /**
+     * Registration types this participant may choose.
+     *
+     * @return list<RegistrationType>
+     */
+    public function registrationTypes(): array
+    {
+        return array_values(array_filter(RegistrationType::cases(), $this->canRegisterAs(...)));
     }
 
     /**

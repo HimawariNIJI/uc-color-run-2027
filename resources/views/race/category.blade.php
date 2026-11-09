@@ -48,18 +48,21 @@
                         <div class="grid gap-4 sm:gap-6 md:grid-cols-2">
                             <section class="rounded-3xl border border-border bg-surface p-4 shadow-card sm:p-5" data-reveal>
                                 <h2 class="pb-4 text-center font-display text-h4 uppercase tracking-wider text-primary">Registration Fee</h2>
+                                @php($categoryPackages = $packages->filter(fn ($package): bool => $package->race_category === $category))
                                 <div class="grid gap-4 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2">
                                     @foreach (\App\Enums\FeePeriod::cases() as $period)
-                                        @php($slotsLeft = $earlyBirdSlotsLeft[$category->value])
-                                        <x-fee-container
-                                            :title="$period->label()"
-                                            :prices="collect($registrationTypes)->mapWithKeys(fn ($type): array => [$type->label() => $category->feeFor($type, $period)])->all()"
-                                            :status="$period === \App\Enums\FeePeriod::EarlyBird ? ($slotsLeft > 0 ? 'Sisa '.\App\Support\NumberFormat::integer($slotsLeft).' slot' : 'Sold out') : null"
-                                            :unavailable="$period === \App\Enums\FeePeriod::EarlyBird && $slotsLeft === 0"
-                                        />
+                                        <x-fee-container :title="$period->label()" :packages="$categoryPackages->filter(fn ($package): bool => $package->price_type === $period)" />
+                                    @endforeach
+                                    @foreach ($categoryPackages->filter->isBundle() as $bundle)
+                                        <x-fee-container :title="$bundle->kindLabel()" :packages="[$bundle]" class="sm:col-span-2 md:col-span-1 lg:col-span-2" />
                                     @endforeach
                                 </div>
-                                <p class="mt-4 text-center text-caption text-muted">Early Bird terbatas {{ \App\Support\NumberFormat::integer(\App\Support\EarlyBirdQuota::slots($category)) }} slot untuk {{ $category->distance() }}. Setelah slot habis, berlaku Normal Price.</p>
+                                <p class="mt-4 text-center text-caption text-muted">
+                                    @if ($categoryPackages->contains(fn ($package): bool => $package->price === null))
+                                        Harga resmi belum diumumkan.
+                                    @endif
+                                    Kuota paket individu dihitung per peserta; kuota bundle dihitung per paket.
+                                </p>
                             </section>
 
                             <section class="overflow-hidden rounded-3xl border-[3px] border-primary bg-surface shadow-card" data-reveal style="--reveal-delay: 120ms">

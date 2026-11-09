@@ -5,6 +5,10 @@ namespace App\Http\Requests;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * A Contact Us message from a signed-in participant. There is no email field: the sender's email
+ * always comes from their Google account, never from the browser.
+ */
 class StoreContactMessageRequest extends FormRequest
 {
     /**
@@ -12,7 +16,7 @@ class StoreContactMessageRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+        return $this->user() !== null;
     }
 
     /**
@@ -23,9 +27,9 @@ class StoreContactMessageRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:100'],
-            'email' => ['required', 'email', 'max:255'],
-            'message' => ['required', 'string', 'min:10', 'max:2000'],
+            // The name ends up in email headers (subject, reply-to), so line breaks are refused.
+            'name' => ['required', 'string', 'max:255', 'not_regex:/[\r\n]/'],
+            'message' => ['required', 'string', 'max:5000'],
         ];
     }
 
@@ -36,9 +40,8 @@ class StoreContactMessageRequest extends FormRequest
     {
         return [
             'required' => ':attribute wajib diisi.',
-            'email' => 'Format :attribute tidak valid.',
             'max' => ':attribute maksimal :max karakter.',
-            'min' => ':attribute minimal :min karakter.',
+            'name.not_regex' => ':attribute tidak boleh berisi baris baru.',
         ];
     }
 
@@ -49,7 +52,6 @@ class StoreContactMessageRequest extends FormRequest
     {
         return [
             'name' => 'Full Name',
-            'email' => 'Email Address',
             'message' => 'Message',
         ];
     }

@@ -7,7 +7,10 @@ use App\Enums\Gender;
 use App\Enums\PaymentStatus;
 use App\Enums\RaceCategory;
 use App\Enums\RegistrationType;
+use App\Enums\TransactionStatus;
 use App\Enums\TshirtSize;
+use App\Support\BibNumber;
+use App\Support\Midtrans;
 use Database\Factories\RegistrationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Scope;
@@ -15,8 +18,15 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Throwable;
 
 #[Fillable([
+    'ticket_price_id',
+    'code',
     'type',
     'category',
     'full_name',
@@ -98,6 +108,42 @@ class Registration extends Model
     }
 
     /**
+     * The package this registration bought.
+     *
+     * @return BelongsTo<TicketPrice, $this>
+     */
+    public function ticketPrice(): BelongsTo
+    {
+        return $this->belongsTo(TicketPrice::class);
+    }
+
+    /**
+     * The other people in a bundle, in form order (the account holder is the registration itself).
+     *
+     * @return HasMany<RegistrationMember, $this>
+     */
+    public function members(): HasMany
+    {
+        return $this->hasMany(RegistrationMember::class)->orderBy('position');
+    }
+
+    /**
+     * @return HasMany<Payment, $this>
+     */
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    /**
+     * @return HasOne<Payment, $this>
+     */
+    public function latestPayment(): HasOne
+    {
+        return $this->hasOne(Payment::class)->latestOfMany();
+    }
+
+    /**
      * Search by participant name, email or registration ID.
      */
     #[Scope]
@@ -130,13 +176,18 @@ class Registration extends Model
     }
 
     /**
-     * Early Bird registrations holding one of the limited slots: paid, or waiting for payment.
+     * Registrations holding a slot of their package quota: paid, or waiting for a QRIS payment
+     * that has not expired yet. An expired or failed payment gives the slot back, even before
+     * Midtrans reports the expiry.
      */
     #[Scope]
-    protected function holdingEarlyBirdSlot(Builder $query): void
+    protected function holdingSlot(Builder $query): void
     {
-        $query->where('fee_period', FeePeriod::EarlyBird)
-            ->whereIn('payment_status', [PaymentStatus::Paid, PaymentStatus::Unpaid]);
+        $query->where(fn (Builder $query) => $query
+            ->where('payment_status', PaymentStatus::Paid)
+            ->orWhere(fn (Builder $query) => $query
+                ->where('payment_status', PaymentStatus::Unpaid)
+                ->where('payment_expires_at', '>', now())));
     }
 
     /**
@@ -151,6 +202,35 @@ class Registration extends Model
     public function isPaid(): bool
     {
         return $this->payment_status === PaymentStatus::Paid;
+    }
+
+    /**
+     * The package this registration belongs to. Registrations made before packages were stored
+     * are matched by type, price type and distance; null for an option that is no longer official.
+     */
+    public function package(): ?TicketPrice
+    {
+        if ($this->ticket_price_id !== null) {
+            return $this->ticketPrice;
+        }
+
+        return TicketPrice::findOption($this->type, $this->type === RegistrationType::Bundling ? null : $this->fee_period, $this->category);
+    }
+
+    /**
+     * A QRIS payment may only be created while the package has a price set in the database.
+     */
+    public function hasAnnouncedPrice(): bool
+    {
+        return $this->package()?->price !== null;
+    }
+
+    /**
+     * The package name, for example "5K Early Bid" or "3K Family Bundle".
+     */
+    public function packageName(): string
+    {
+        return $this->package()?->name() ?? $this->category->label();
     }
 
     public function hasFailedPayment(): bool
@@ -191,13 +271,96 @@ class Registration extends Model
      */
     public function markAsPaid(?string $transactionId = null): void
     {
+        $package = $this->package();
+
+        DB::transaction(function () use ($package, $transactionId): void {
+            // The package lock keeps two confirmations from handing out the same BIB number.
+            $package = $package?->lockForRegistration();
+            $this->refresh();
+
+            if ($this->isPaid()) {
+                return;
+            }
+
+            $this->forceFill([
+                'payment_status' => PaymentStatus::Paid,
+                'paid_at' => now(),
+                'payment_expires_at' => null,
+                'transaction_id' => $transactionId ?? $this->transaction_id ?? 'PAY-'.$this->code,
+                'bib_number' => $this->bib_number ?? $this->firstBibNumber($package),
+            ])->save();
+
+            foreach ($this->members()->whereNull('bib_number')->get() as $member) {
+                $member->forceFill(['bib_number' => BibNumber::next($package->bibPrefix())])->save();
+            }
+        });
+    }
+
+    /**
+     * The account holder gets the number reserved in their registration code. If the registration
+     * moved to another package after reserving it (Early Bid full, Normal Bid instead), they get the
+     * next number of their current package so the BIB still describes what they paid for.
+     */
+    private function firstBibNumber(?TicketPrice $package): string
+    {
+        $reserved = BibNumber::fromRegistrationCode($this->code);
+
+        if ($package === null) {
+            return $reserved ?? $this->category->bibPrefix().str_pad((string) $this->id, 4, '0', STR_PAD_LEFT);
+        }
+
+        return $reserved !== null && str_starts_with($reserved, $package->bibPrefix())
+            ? $reserved
+            : BibNumber::next($package->bibPrefix());
+    }
+
+    /**
+     * Create the Midtrans QRIS for the registration's amount and keep it as the latest payment
+     * attempt. If Midtrans refuses, the attempt and the registration are marked failed (which gives
+     * the slot back) and the exception is rethrown for the caller to report.
+     */
+    public function startQrisPayment(): Payment
+    {
+        $payment = $this->payments()->create([
+            'order_id' => $this->code.'-'.($this->payments()->count() + 1),
+            'amount' => $this->amount,
+            'status' => TransactionStatus::Pending,
+            'expires_at' => $this->payment_expires_at,
+        ]);
+
+        try {
+            $charge = Midtrans::chargeQris(
+                orderId: $payment->order_id,
+                amount: $payment->amount,
+                itemId: 'package-'.($this->ticket_price_id ?? 0),
+                itemName: $this->packageName().' '.$this->type->label(),
+                customer: ['first_name' => mb_substr($this->full_name, 0, 255), 'email' => $this->email, 'phone' => $this->phone],
+                expiryMinutes: (int) config('event.payment_window_minutes'),
+            );
+        } catch (Throwable $exception) {
+            $payment->update(['status' => TransactionStatus::Failed]);
+            $this->markAsFailed();
+
+            throw $exception;
+        }
+
+        // Midtrans reports times in Western Indonesian Time (GMT+7).
+        $expiresAt = filled($charge['expiry_time'] ?? null) ? Carbon::parse($charge['expiry_time'], 'Asia/Jakarta') : $this->payment_expires_at;
+
+        $payment->update([
+            'gateway_transaction_id' => $charge['transaction_id'] ?? null,
+            'qr_string' => $charge['qr_string'],
+            'qr_url' => collect($charge['actions'] ?? [])->firstWhere('name', 'generate-qr-code')['url'] ?? null,
+            'expires_at' => $expiresAt,
+        ]);
+
         $this->forceFill([
-            'payment_status' => PaymentStatus::Paid,
-            'paid_at' => now(),
-            'payment_expires_at' => null,
-            'transaction_id' => $transactionId ?? $this->transaction_id ?? 'PAY-'.$this->code,
-            'bib_number' => $this->bib_number ?? $this->category->bibPrefix().str_pad((string) $this->id, 4, '0', STR_PAD_LEFT),
+            'payment_status' => PaymentStatus::Unpaid,
+            'payment_expires_at' => $expiresAt,
+            'transaction_id' => $payment->order_id,
         ])->save();
+
+        return $payment;
     }
 
     public function hasCollectedBib(): bool
@@ -242,7 +405,9 @@ class Registration extends Model
      */
     public function raceLabel(): string
     {
-        return $this->category->label().' '.$this->type->label();
+        return $this->type === RegistrationType::Bundling
+            ? $this->packageName()
+            : $this->category->label().' '.$this->type->label();
     }
 
     /**

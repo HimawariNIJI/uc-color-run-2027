@@ -28,34 +28,39 @@ return [
         'maps_url' => 'https://maps.google.com/?q=Universitas+Ciputra+Surabaya',
     ],
 
-    // Placeholder number of Early Bird slots per race category. Paid and pending registrations
-    // hold a slot; failed payments give it back. Once a category is full, only Normal Price is offered.
-    'early_bird_slots' => [
-        '3k' => 300,
-        '5k' => 300,
-        '10k' => 200,
-    ],
-
     // How long a QRIS payment stays valid before it must be renewed.
     'payment_window_minutes' => 60,
 
-    // Placeholder prices in Rupiah, per registration type and race category.
-    'pricing' => [
-        'internal' => [
-            '3k' => ['early_bird' => 100000, 'regular' => 125000],
-            '5k' => ['early_bird' => 125000, 'regular' => 150000],
-            '10k' => ['early_bird' => 175000, 'regular' => 200000],
-        ],
-        'external' => [
-            '3k' => ['early_bird' => 125000, 'regular' => 150000],
-            '5k' => ['early_bird' => 150000, 'regular' => 175000],
-            '10k' => ['early_bird' => 200000, 'regular' => 225000],
-        ],
-        'bundling' => [
-            '3k' => ['early_bird' => 115000, 'regular' => 140000],
-            '5k' => ['early_bird' => 140000, 'regular' => 165000],
-            '10k' => ['early_bird' => 190000, 'regular' => 215000],
-        ],
+    /*
+    | Official registration packages from the Executive Chair (received 8 November 2026).
+    | This list is the seed source: TicketPriceSeeder writes it to the ticket_prices table,
+    | and the website and payments always read prices and quotas from that table.
+    | Re-run `php artisan db:seed --class=TicketPriceSeeder` after changing it.
+    |
+    | price_type: "early_bird" (Early Bid) or "normal" (Normal Bid); bundles have none.
+    | quota:      individual packages count participants, bundles count whole packages.
+    |             null = not announced yet (never treated as zero or as unlimited).
+    | price:      whole Rupiah for one package (a bundle's price covers the whole bundle);
+    |             null = Price To Be Announced. Rp100.000 is TEMPORARY until official prices.
+    | A package can only be registered once both its price and its quota are set.
+    */
+    'packages' => [
+        ['race_category' => '3k', 'registration_type' => 'internal', 'price_type' => 'early_bird', 'quota' => 75, 'price' => 100000],
+        ['race_category' => '3k', 'registration_type' => 'external', 'price_type' => 'early_bird', 'quota' => 50, 'price' => 100000],
+        ['race_category' => '3k', 'registration_type' => 'internal', 'price_type' => 'normal', 'quota' => 75, 'price' => 100000],
+        ['race_category' => '3k', 'registration_type' => 'external', 'price_type' => 'normal', 'quota' => null, 'price' => 100000],
+        ['race_category' => '3k', 'registration_type' => 'bundling', 'bundle_type' => 'family', 'max_participants' => 4, 'quota' => 20, 'price' => 100000],
+
+        ['race_category' => '5k', 'registration_type' => 'bundling', 'bundle_type' => 'couple', 'max_participants' => 2, 'quota' => 50, 'price' => 100000],
+        ['race_category' => '5k', 'registration_type' => 'internal', 'price_type' => 'early_bird', 'quota' => 100, 'price' => 100000],
+        ['race_category' => '5k', 'registration_type' => 'external', 'price_type' => 'early_bird', 'quota' => 100, 'price' => 100000],
+        ['race_category' => '5k', 'registration_type' => 'internal', 'price_type' => 'normal', 'quota' => 150, 'price' => 100000],
+        ['race_category' => '5k', 'registration_type' => 'external', 'price_type' => 'normal', 'quota' => null, 'price' => 100000],
+
+        ['race_category' => '10k', 'registration_type' => 'internal', 'price_type' => 'early_bird', 'quota' => 50, 'price' => 100000],
+        ['race_category' => '10k', 'registration_type' => 'external', 'price_type' => 'early_bird', 'quota' => 100, 'price' => 100000],
+        ['race_category' => '10k', 'registration_type' => 'internal', 'price_type' => 'normal', 'quota' => 100, 'price' => 100000],
+        ['race_category' => '10k', 'registration_type' => 'external', 'price_type' => 'normal', 'quota' => null, 'price' => 100000],
     ],
 
     // Race details per category. Route images live in public/ (null shows a placeholder);

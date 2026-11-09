@@ -5,27 +5,51 @@
             <p class="mt-0.5 text-body-sm text-muted">Satu langkah lagi untuk mengamankan slot registrasimu!</p>
         </div>
 
-        <x-payment.summary :registration="$registration" />
+        <x-payment.summary :registration="$registration">
+            <x-detail-row label="Kode registrasi"><span class="font-semibold">{{ $registration->code }}</span></x-detail-row>
+            <x-detail-row label="Status">
+                <x-badge tone="warning">{{ \App\Enums\TransactionStatus::Pending->label() }}</x-badge>
+            </x-detail-row>
+        </x-payment.summary>
 
-        <section class="rounded-2xl border border-border p-4 text-center sm:p-5">
+        {{-- Polls the server, which asks Midtrans; the page moves on once the payment is confirmed. --}}
+        <section class="rounded-2xl border border-border p-4 text-center sm:p-5" data-payment-status="{{ route('payment.status') }}">
             <h2 class="flex items-center justify-center gap-2 text-body font-semibold">
                 <x-icon name="qr-code" class="size-5 text-primary" />
                 Bayar dengan QRIS
             </h2>
 
-            {{-- Placeholder until the payment gateway supplies the QRIS image. --}}
-            <div class="mx-auto mt-4 grid size-48 place-items-center rounded-2xl border-2 border-dashed border-border bg-background sm:size-52" role="img" aria-label="Kode QRIS">
-                <span class="flex flex-col items-center gap-2 text-muted">
-                    <x-icon name="qr-code" class="size-14" stroke-width="1.5" />
-                    <span class="text-body-sm font-bold tracking-[0.3em] text-foreground">QRIS</span>
-                </span>
-            </div>
+            @if ($qrSvg)
+                {{-- The QRIS exactly as Midtrans created it for this registration. --}}
+                <div class="mx-auto mt-4 w-fit rounded-2xl border border-border bg-white p-3 shadow-card">
+                    <div class="size-52 sm:size-60 [&>svg]:size-full" role="img" aria-label="Kode QRIS pembayaran {{ $registration->code }}">
+                        {!! $qrSvg !!}
+                    </div>
+                </div>
+                <p class="mt-3 text-caption text-muted">Order ID: <span class="font-semibold text-foreground">{{ $payment->order_id }}</span></p>
+            @else
+                <div class="mx-auto mt-4 grid size-48 place-items-center rounded-2xl border-2 border-dashed border-border bg-background sm:size-52" role="img" aria-label="Kode QRIS belum tersedia">
+                    <span class="flex flex-col items-center gap-2 text-muted">
+                        <x-icon name="qr-code" class="size-14" stroke-width="1.5" />
+                        <span class="text-body-sm font-bold tracking-[0.3em] text-foreground">QRIS</span>
+                    </span>
+                </div>
+                @if ($canCreateQris)
+                    <p class="mx-auto mt-3 max-w-xs text-caption text-muted">Kode QRIS belum dibuat untuk registrasi ini.</p>
+                    <form method="POST" action="{{ route('payment.retry') }}" class="mx-auto mt-3 max-w-xs" data-submit-guard>
+                        @csrf
+                        <x-button type="submit" variant="secondary" size="sm" block data-busy-label="Membuat kode QRIS…">Buat Kode QRIS</x-button>
+                    </form>
+                @else
+                    <p class="mx-auto mt-3 max-w-xs text-caption text-muted">Kode QRIS belum tersedia karena payment gateway belum dikonfigurasi.</p>
+                @endif
+            @endif
 
             <p class="mx-auto mt-4 max-w-xs text-body-sm text-muted">Scan QR menggunakan aplikasi mobile banking atau e-wallet yang mendukung QRIS.</p>
 
             <x-alert tone="warning" title="Selesaikan sebelum kedaluwarsa" class="mt-4 text-left">
-                Batas waktu: {{ $registration->payment_expires_at->translatedFormat('j F Y, H.i') }} WIB
-                <span class="whitespace-nowrap" data-countdown="{{ $registration->payment_expires_at->toIso8601String() }}">
+                Batas waktu: {{ $expiresAt->translatedFormat('j F Y, H.i') }} WIB
+                <span class="whitespace-nowrap" data-countdown="{{ $expiresAt->toIso8601String() }}">
                     (sisa <span class="tabular-nums" data-countdown-unit="minutes">{{ sprintf('%02d', intdiv($secondsLeft, 60)) }}</span>:<span class="tabular-nums" data-countdown-unit="seconds">{{ sprintf('%02d', $secondsLeft % 60) }}</span>)
                 </span>
             </x-alert>
@@ -54,7 +78,7 @@
                     <x-icon name="info" class="size-4" />
                     Simulasi pembayaran (local only)
                 </p>
-                <p class="mt-1 text-caption text-muted">Payment gateway belum terhubung. Gunakan tombol ini untuk menguji alur pembayaran.</p>
+                <p class="mt-1 text-caption text-muted">Kunci Midtrans belum diisi. Gunakan tombol ini untuk menguji alur pembayaran; tombol ini hilang setelah MIDTRANS_SERVER_KEY diisi.</p>
                 <div class="mt-3 grid gap-2 min-[25rem]:grid-cols-2">
                     <form method="POST" action="{{ route('payment.simulate', 'paid') }}">
                         @csrf

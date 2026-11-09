@@ -2,8 +2,10 @@
 
 namespace Database\Seeders\Foundation;
 
+use App\Support\BibNumber;
 use Closure;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
@@ -47,24 +49,37 @@ class SampleRegistrationSeeder extends Seeder
         $adminId = DB::table('admins')->where('username', AdminSeeder::USERNAME)->value('id')
             ?? throw new RuntimeException('Run AdminSeeder first: the sample racepack scans need an admin.');
 
-        DB::transaction(function () use ($adminId): void {
-            foreach (self::samples() as $index => $sample) {
+        // A registration records what was paid, so samples are only made for packages with an
+        // official price. While prices are still to be announced, no fake amounts are stored.
+        $samples = array_filter(self::samples(), fn (array $sample): bool => DB::table('ticket_prices')
+            ->where(Arr::only($sample, ['registration_type', 'bundle_type', 'race_category', 'price_type']))
+            ->whereNotNull('price')
+            ->exists());
+
+        if ($samples === []) {
+            $this->command?->info('Skipped sample registrations: no package has an official price yet.');
+
+            return;
+        }
+
+        DB::transaction(function () use ($adminId, $samples): void {
+            foreach ($samples as $index => $sample) {
                 $this->seedRegistration($index + 1, $sample, $adminId);
             }
 
             $this->syncTicketPriceCounters();
         });
 
-        $this->command?->info('Seeded '.count(self::samples()).' sample registrations (@'.self::EMAIL_DOMAIN.').');
+        $this->command?->info('Seeded '.count($samples).' of '.count(self::samples()).' sample registrations (@'.self::EMAIL_DOMAIN.'); the rest wait for official prices.');
     }
 
     /**
      * One entry per account. The first member is the account holder. "sequence" is the number
      * reserved in the registration code; the second sample is the example from the BIB brief
-     * (10K, Early Bird, External, number 19). Payments are listed in the order they were attempted,
+     * (10K, Early Bid, External, number 19). Payments are listed in the order they were attempted,
      * and scans are keyed by member position.
      *
-     * @return list<array{registration_type: string, bundle_type: ?string, race_category: string, price_type: string, sequence: int, status: string, registered_days_ago: int, members: list<array{string, string, string, string, string}>, payments: list<string>, scans: array<int, list<string>>}>
+     * @return list<array{registration_type: string, bundle_type: ?string, race_category: string, price_type: ?string, sequence: int, status: string, registered_days_ago: int, members: list<array{string, string, string, string, string}>, payments: list<string>, scans: array<int, list<string>>}>
      */
     private static function samples(): array
     {
@@ -105,7 +120,7 @@ class SampleRegistrationSeeder extends Seeder
                 'scans' => [],
             ],
             [
-                'registration_type' => 'bundling', 'bundle_type' => 'couple', 'race_category' => '5k', 'price_type' => 'early_bird',
+                'registration_type' => 'bundling', 'bundle_type' => 'couple', 'race_category' => '5k', 'price_type' => null,
                 'sequence' => 1, 'status' => 'confirmed', 'registered_days_ago' => 28,
                 'members' => [
                     ['Fajar Nugroho', 'male', '1996-02-08', 'L', 'ktp'],
@@ -115,7 +130,7 @@ class SampleRegistrationSeeder extends Seeder
                 'scans' => [0 => ['success']],
             ],
             [
-                'registration_type' => 'bundling', 'bundle_type' => 'family', 'race_category' => '3k', 'price_type' => 'normal',
+                'registration_type' => 'bundling', 'bundle_type' => 'family', 'race_category' => '3k', 'price_type' => null,
                 'sequence' => 1, 'status' => 'pending_payment', 'registered_days_ago' => 1,
                 'members' => [
                     ['Hendra Wijaya', 'male', '1979-05-14', 'XL', 'ktp'],
@@ -130,7 +145,7 @@ class SampleRegistrationSeeder extends Seeder
     }
 
     /**
-     * @param  array{registration_type: string, bundle_type: ?string, race_category: string, price_type: string, sequence: int, status: string, registered_days_ago: int, members: list<array{string, string, string, string, string}>, payments: list<string>, scans: array<int, list<string>>}  $sample
+     * @param  array{registration_type: string, bundle_type: ?string, race_category: string, price_type: ?string, sequence: int, status: string, registered_days_ago: int, members: list<array{string, string, string, string, string}>, payments: list<string>, scans: array<int, list<string>>}  $sample
      */
     private function seedRegistration(int $accountNumber, array $sample, int $adminId): void
     {

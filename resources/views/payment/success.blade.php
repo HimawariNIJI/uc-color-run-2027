@@ -16,6 +16,11 @@
             <x-detail-row label="Status">
                 <x-badge tone="success">{{ $registration->payment_status->settlementLabel() }}</x-badge>
             </x-detail-row>
+            <x-detail-row label="Kode registrasi">{{ $registration->code }}</x-detail-row>
+            <x-detail-row label="Nomor BIB"><span class="font-semibold tabular-nums">{{ $registration->bib_number }}</span></x-detail-row>
+            @foreach ($registration->members as $member)
+                <x-detail-row :label="'BIB '.$member->full_name"><span class="font-semibold tabular-nums">{{ $member->bib_number }}</span></x-detail-row>
+            @endforeach
         </x-payment.summary>
 
         <div class="rounded-2xl border border-border px-5 py-6">

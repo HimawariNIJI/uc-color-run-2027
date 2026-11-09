@@ -23,23 +23,51 @@ it('selects the category given in the query string', function () {
         ], false);
 });
 
-it('lists early bird and normal prices for every registration type', function () {
-    config(['event.pricing.external.5k' => ['early_bird' => 150000, 'regular' => 175000]]);
-
+it('lists the official packages of each distance with their quotas and prices from the database', function () {
     $this->get(route('race.category'))
         ->assertOk()
-        ->assertSee(['Early Bird', 'Normal Price', 'Rp150.000', 'Rp175.000']);
+        ->assertDontSee(['Price To Be Announced', 'Harga resmi belum diumumkan.'])
+        ->assertSeeInOrder([
+            'id="category-panel-3k"',
+            'Early Bid', 'Internal', 'Kuota 75 slot', 'Rp100.000', 'External', 'Kuota 50 slot', 'Rp100.000',
+            'Normal Bid', 'Internal', 'Kuota 75 slot', 'Rp100.000', 'External', 'Kuota belum diumumkan', 'Rp100.000',
+            'Family Bundle', 'Maks. 4 peserta', 'Kuota 20 paket', 'Rp100.000',
+            'id="category-panel-5k"',
+            'Early Bid', 'Internal', 'Kuota 100 slot', 'External', 'Kuota 100 slot',
+            'Normal Bid', 'Internal', 'Kuota 150 slot', 'External', 'Kuota belum diumumkan',
+            'Couple Bundle', 'Maks. 2 peserta', 'Kuota 50 paket',
+            'id="category-panel-10k"',
+            'Early Bid', 'Internal', 'Kuota 50 slot', 'External', 'Kuota 100 slot',
+            'Normal Bid', 'Internal', 'Kuota 100 slot', 'External', 'Kuota belum diumumkan',
+        ], false);
 });
 
-it('shows the early bird slots left for each distance', function () {
-    config(['event.early_bird_slots' => ['3k' => 300, '5k' => 1, '10k' => 200]]);
-    Registration::factory()->create(['category' => '3k']);
-    Registration::factory()->create(['category' => '5k']);
+it('offers no bundle for 10K', function () {
+    $response = $this->get(route('race.category'))->assertOk();
+    $panel10k = str($response->getContent())->after('id="category-panel-10k"');
+
+    expect((string) $panel10k)->not->toContain('Bundle');
+});
+
+it('shows the current database price, or Price To Be Announced when it is not set', function () {
+    setPackage('external', 'early_bird', '5k', ['price' => 150000]);
+    setPackage('bundling', null, '3k', ['price' => null]);
 
     $this->get(route('race.category'))
         ->assertOk()
-        ->assertSeeInOrder(['Sisa 299 slot', 'Early Bird terbatas 300 slot untuk 3 KM. Setelah slot habis, berlaku Normal Price.'])
-        ->assertSeeInOrder(['id="category-panel-5k"', 'Sold out'], false);
+        ->assertSeeInOrder(['id="category-panel-3k"', 'Family Bundle', 'Price To Be Announced', 'Harga resmi belum diumumkan.', 'id="category-panel-5k"', 'External', 'Rp150.000'], false);
+});
+
+it('counts taken slots per package and shows when one is sold out', function () {
+    setPackage('internal', 'early_bird', '3k', ['quota' => 2]);
+    setPackage('external', 'early_bird', '3k', ['quota' => 1]);
+    Registration::factory()->create(['type' => 'internal', 'category' => '3k']);
+    Registration::factory()->failed()->create(['type' => 'internal', 'category' => '3k']);
+    Registration::factory()->paid()->create(['type' => 'external', 'category' => '3k']);
+
+    $this->get(route('race.category'))
+        ->assertOk()
+        ->assertSeeInOrder(['id="category-panel-3k"', 'Early Bid', 'Internal', 'Sisa 1 dari 2 slot', 'External', 'Sold out'], false);
 });
 
 it('counts down to the configured race day', function () {

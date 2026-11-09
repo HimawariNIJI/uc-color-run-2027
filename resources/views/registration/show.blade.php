@@ -59,7 +59,11 @@
                             <x-detail-row label="Participant Name">{{ $registration->full_name }}</x-detail-row>
                             <x-detail-row label="Email"><span class="break-all">{{ $registration->email }}</span></x-detail-row>
                             <x-detail-row label="Race Category">{{ $registration->category->runLabel() }} &middot; {{ $registration->type->label() }}</x-detail-row>
+                            <x-detail-row label="Package">{{ $registration->packageName() }}</x-detail-row>
                             <x-detail-row label="T-shirt Size">{{ $registration->tshirt_size->label() }}</x-detail-row>
+                            @foreach ($registration->members as $member)
+                                <x-detail-row :label="'Peserta '.$member->position">{{ $member->full_name }}@if ($member->bib_number) &middot; BIB {{ $member->bib_number }}@endif</x-detail-row>
+                            @endforeach
                         </dl>
 
                         <h3 class="mt-4 border-t border-border pt-4 text-body-sm font-bold">Payment Information</h3>

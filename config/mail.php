@@ -37,14 +37,16 @@ return [
 
     'mailers' => [
 
+        // The project's SMTP account lives in SMTP_HOST, SMTP_PORT, SMTP_USER and SMTP_PASS; Laravel's
+        // usual MAIL_* names still work as a fallback. Port 465 connects with TLS from the start.
         'smtp' => [
             'transport' => 'smtp',
             'scheme' => env('MAIL_SCHEME'),
             'url' => env('MAIL_URL'),
-            'host' => env('MAIL_HOST', '127.0.0.1'),
-            'port' => env('MAIL_PORT', 2525),
-            'username' => env('MAIL_USERNAME'),
-            'password' => env('MAIL_PASSWORD'),
+            'host' => env('SMTP_HOST', env('MAIL_HOST', '127.0.0.1')),
+            'port' => env('SMTP_PORT', env('MAIL_PORT', 2525)),
+            'username' => env('SMTP_USER', env('MAIL_USERNAME')),
+            'password' => env('SMTP_PASS', env('MAIL_PASSWORD')),
             'timeout' => null,
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
@@ -110,9 +112,24 @@ return [
     |
     */
 
+    // Without MAIL_FROM_ADDRESS, emails come from the SMTP account itself (Gmail requires this).
     'from' => [
-        'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
+        'address' => env('MAIL_FROM_ADDRESS', env('SMTP_USER', 'hello@example.com')),
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Contact Us Recipient
+    |--------------------------------------------------------------------------
+    |
+    | Messages from the Contact Us form are delivered to this address. They
+    | are sent from the "from" address above, with the visitor as reply-to.
+    |
+    */
+
+    'contact_us' => [
+        'address' => env('CONTACT_US_EMAIL'),
     ],
 
 ];

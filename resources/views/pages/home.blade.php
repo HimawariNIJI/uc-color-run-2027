@@ -48,8 +48,10 @@
                     UC Color Run 2027 kembali hadir di Universitas Ciputra Surabaya! Rasakan serunya berlari melewati color zone penuh warna bersama ribuan pelari, komunitas, dan keluarga. Pilih kategori 3K, 5K, atau 10K sesuai kemampuanmu dan jadikan garis finish sebagai perayaan.
                 </p>
                 <p class="mt-6 text-body font-semibold">
-                    @if ($isEarlyBirdAvailable)
-                        Kuota terbatas! Slot Early Bird masih tersedia, amankan harga spesialmu sekarang.
+                    @if ($isEarlyBidOpen)
+                        Kuota terbatas! Slot Early Bid masih tersedia, amankan harga spesialmu sekarang.
+                    @elseif (! $isAnyPackageOpen)
+                        Paket dan kuota resmi sudah diumumkan. Harga akan segera diumumkan, pantau terus!
                     @else
                         Kuota terbatas! Daftar sekarang dan amankan slotmu di garis start.
                     @endif

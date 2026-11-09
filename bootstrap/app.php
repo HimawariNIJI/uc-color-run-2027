@@ -15,6 +15,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // The admin console has its own sign-in page and home, separate from participants.
         $middleware->redirectGuestsTo(fn (Request $request) => $request->routeIs('admin.*') ? route('admin.login') : route('login'));
         $middleware->redirectUsersTo(fn (Request $request) => $request->routeIs('admin.*') ? route('admin.dashboard') : route('home'));
+
+        // Midtrans posts payment notifications server-to-server; they are verified by signature instead.
+        $middleware->preventRequestForgery(except: ['payments/midtrans/notification']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
