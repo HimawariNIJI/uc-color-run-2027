@@ -184,11 +184,8 @@ class RegistrationController extends Controller
         // If registration found, synchronize payment status with Order
         if ($registration && $registration->order_id) {
             $order = Order::where('order_id', $registration->order_id)->first();
-            if ($order && $order->status === 'PAID' && $registration->payment_status !== 'Paid') {
-                $registration->update([
-                    'payment_status' => 'Paid',
-                    'bib_number' => $registration->bib_number ?: ('UC27'.str_pad((string) $registration->id, 3, '0', STR_PAD_LEFT)),
-                ]);
+            if ($order && $order->status === 'PAID' && ! $registration->isPaid()) {
+                $registration->markAsPaid();
             }
         }
 
@@ -201,7 +198,14 @@ class RegistrationController extends Controller
     public function myBib(Request $request): View|RedirectResponse
     {
         $registration = null;
-        if (session('registered_id')) {
+
+        if ($request->query('code')) {
+            $registration = Registration::where('registration_code', $request->query('code'))->first();
+        } elseif ($request->query('id')) {
+            $registration = Registration::find($request->query('id'));
+        }
+
+        if (! $registration && session('registered_id')) {
             $registration = Registration::find(session('registered_id'));
         }
 
@@ -209,16 +213,27 @@ class RegistrationController extends Controller
             $registration = Registration::where('user_id', auth()->id())->latest()->first();
         }
 
-        if (! $registration || $registration->payment_status !== 'Paid') {
+        if (! $registration || ! $registration->isPaid()) {
             return redirect()->route('my-registration')
                 ->with('error', 'Nomor BIB hanya dapat diakses setelah pembayaran terkonfirmasi.');
         }
 
+        // Ensure BIB number is assigned and saved
+        if (! $registration->bib_number) {
+            $registration->update([
+                'bib_number' => PaymentController::generateBibNumber($registration->race_category),
+            ]);
+        }
+
         $bib = [
-            'bib_number' => $registration->bib_number ?: 'UC27'.str_pad((string) $registration->id, 3, '0', STR_PAD_LEFT),
+            'bib_number' => $registration->bib_number,
             'category' => $registration->race_category,
             'runner_name' => $registration->full_name,
-            'wave' => $registration->race_category === '21K Half Marathon' ? 'Wave 1 (05:00 AM)' : ($registration->race_category === '10K Run' ? 'Wave 2 (05:30 AM)' : 'Wave 3 (06:00 AM)'),
+            'wave' => match (strtolower(trim($registration->race_category))) {
+                '21k half marathon', '21k' => 'Wave 1 (05:00 AM)',
+                '10k run', '10k'           => 'Wave 2 (05:30 AM)',
+                default                    => 'Wave 3 (06:00 AM)',
+            },
         ];
 
         return view('bib', compact('registration', 'bib'));

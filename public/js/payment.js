@@ -7,7 +7,7 @@ let currentParticipant = {
   amount: parseInt(initialDataEl?.dataset?.amount || "150000", 10)
 };
 
-let currentOrderId = null;
+let currentOrderId = initialDataEl?.dataset?.orderId || null;
 let currentQrString = null;
 let pollInterval = null;
 let countdownInterval = null;
@@ -38,6 +38,7 @@ async function createNewOrder() {
         'X-CSRF-TOKEN': csrfToken
       },
       body: JSON.stringify({
+        order_id: currentOrderId,
         participant_name: currentParticipant.name,
         race_category: currentParticipant.category,
         tshirt_size: currentParticipant.tshirt,
@@ -194,8 +195,16 @@ function copyQrString() {
 }
 
 async function instantSimulatePaid() {
-  if (!currentOrderId) return;
+  if (!currentOrderId) {
+    alert('Order belum dibuat!');
+    return;
+  }
+
+  const btn = event?.target;
+  if (btn) { btn.disabled = true; btn.innerText = '⏳ Memproses...'; }
+
   try {
+    // 1. Mark as paid via mock endpoint
     const res = await fetch('/payment/mock-pay', {
       method: 'POST',
       headers: {
@@ -205,10 +214,28 @@ async function instantSimulatePaid() {
       },
       body: JSON.stringify({ order_id: currentOrderId })
     });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Gagal simulasi');
+    }
+
     const data = await res.json();
-    await manualCheckStatus();
+    if (!data.success) throw new Error('Respons tidak berhasil');
+
+    // 2. Immediately handle success using data we already have
+    handleSuccess({
+      order_id: currentOrderId,
+      participant_name: currentParticipant.name,
+      race_category: currentParticipant.category,
+      tshirt_size: currentParticipant.tshirt,
+      amount: currentParticipant.amount,
+      status: 'PAID'
+    });
+
   } catch (err) {
     alert('Simulasi error: ' + err.message);
+    if (btn) { btn.disabled = false; btn.innerText = '⚡ Simulasi Bayar Langsung'; }
   }
 }
 

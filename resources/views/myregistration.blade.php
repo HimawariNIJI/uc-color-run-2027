@@ -39,7 +39,7 @@
 
                 @if(!$registration)
                     <span class="badge empty">Empty</span>
-                @elseif($registration->payment_status === 'Paid')
+                @elseif($registration->isPaid())
                     <span class="badge paid">Paid</span>
                 @else  
                     <span class="badge pending">Pending</span>
@@ -66,7 +66,7 @@
                 <a href="{{ route('registration.create') }}" class="action-btn">Register Now →</a>
 
             {{-- 2. PENDING / UNPAID STATE (Image 2 Left) --}}
-            @elseif($registration->payment_status !== 'Paid')
+            @elseif(! $registration->isPaid())
                 <div class="reg-state-box">
                     <div class="status-alert-box">
                         <div class="alert-icon">
@@ -124,6 +124,7 @@
                 </div>
 
                 <a href="{{ route('payment.index', [
+                    'order_id' => $registration->order_id,
                     'name' => $registration->full_name,
                     'category' => $registration->race_category,
                     'tshirt' => $registration->tshirt_size,
@@ -203,7 +204,7 @@
                     </div>
                 </div>
 
-                <a href="{{ route('my-bib') }}" class="action-btn">View My BIB →</a>
+                <a href="{{ route('my-bib', ['code' => $registration->registration_code]) }}" class="action-btn">View My BIB →</a>
             @endif
 
         </section>

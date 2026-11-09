@@ -17,12 +17,30 @@ class PaymentController extends Controller
      */
     public function index(Request $request): View
     {
-        $participantName = $request->query('name', 'Nama Lengkap');
-        $raceCategory = $request->query('category', '5K');
-        $tshirtSize = $request->query('tshirt', 'M');
-        $amount = (int) $request->query('amount', 150000);
+        $orderId = $request->query('order_id');
+        $participantName = $request->query('name');
+        $raceCategory = $request->query('category');
+        $tshirtSize = $request->query('tshirt');
+        $amount = (int) $request->query('amount', 0);
 
-        return view('payment', compact('participantName', 'raceCategory', 'tshirtSize', 'amount'));
+        // Fallback to active session registration if parameters were not provided
+        if ((! $orderId || ! $participantName) && session('registered_id')) {
+            $reg = Registration::find(session('registered_id'));
+            if ($reg) {
+                $orderId = $orderId ?: $reg->order_id;
+                $participantName = $participantName ?: $reg->full_name;
+                $raceCategory = $raceCategory ?: $reg->race_category;
+                $tshirtSize = $tshirtSize ?: $reg->tshirt_size;
+                $amount = $amount ?: $reg->amount;
+            }
+        }
+
+        $participantName = $participantName ?: 'Nama Lengkap';
+        $raceCategory = $raceCategory ?: '5K';
+        $tshirtSize = $tshirtSize ?: 'M';
+        $amount = $amount ?: 150000;
+
+        return view('payment', compact('orderId', 'participantName', 'raceCategory', 'tshirtSize', 'amount'));
     }
 
     /**
@@ -31,6 +49,7 @@ class PaymentController extends Controller
     public function createOrder(Request $request): JsonResponse
     {
         $validated = $request->validate([
+            'order_id' => 'nullable|string|max:100',
             'participant_name' => 'nullable|string|max:100',
             'race_category' => 'nullable|string|max:20',
             'tshirt_size' => 'nullable|string|max:10',
@@ -45,7 +64,25 @@ class PaymentController extends Controller
             $amount = 150000;
         }
 
-        $orderId = 'UCRUN-'.date('YmdHis').'-'.rand(100, 999);
+        // Reuse existing orderId if provided or linked to active registration
+        $orderId = trim($validated['order_id'] ?? '');
+        if (! $orderId && session('registered_id')) {
+            $reg = Registration::find(session('registered_id'));
+            if ($reg && $reg->order_id) {
+                $orderId = $reg->order_id;
+            }
+        }
+        if (! $orderId) {
+            $orderId = 'UCRUN-'.date('YmdHis').'-'.rand(100, 999);
+        }
+
+        // Ensure session registration is linked to this order
+        if (session('registered_id')) {
+            $reg = Registration::find(session('registered_id'));
+            if ($reg && (! $reg->order_id || $reg->order_id !== $orderId)) {
+                $reg->update(['order_id' => $orderId]);
+            }
+        }
         $itemName = "UC Color Run {$raceCategory}";
 
         $serverKey = config('midtrans.server_key');
@@ -310,16 +347,58 @@ class PaymentController extends Controller
     }
 
     /**
-     * Helper to mark associated registration as Paid.
+     * Helper to mark associated registration as Paid and assign a BIB number.
+     *
+     * BIB format: {km_prefix}{4 random digits}
+     * - 3K  → starts with 3  (e.g. 31042)
+     * - 5K  → starts with 5  (e.g. 50837)
+     * - 10K → starts with 1  (e.g. 10294)
      */
     public static function markRegistrationPaid(string $orderId): void
     {
         $registration = Registration::where('order_id', $orderId)->first();
-        if ($registration && $registration->payment_status !== 'Paid') {
-            $registration->update([
-                'payment_status' => 'Paid',
-                'bib_number' => $registration->bib_number ?: ('UC27'.str_pad((string) $registration->id, 3, '0', STR_PAD_LEFT)),
-            ]);
+
+        // Fallback to active registration in session if not matched by order_id
+        if (! $registration && session('registered_id')) {
+            $registration = Registration::find(session('registered_id'));
+            if ($registration && (! $registration->order_id || $registration->order_id !== $orderId)) {
+                $registration->update(['order_id' => $orderId]);
+            }
         }
+
+        if (! $registration || $registration->isPaid()) {
+            return;
+        }
+
+        $registration->markAsPaid();
+    }
+
+    /**
+     * Generate a unique BIB number for a given race category.
+     *
+     * Prefix rules (matches RaceCategory::bibPrefix()):
+     *   3k  → '3'   (5-digit BIB: 3XXXX)
+     *   5k  → '5'   (5-digit BIB: 5XXXX)
+     *   10k → '1'   (5-digit BIB: 1XXXX)
+     */
+    public static function generateBibNumber(string $raceCategory): string
+    {
+        // Normalise to lower-case short form
+        $prefix = match (strtolower(trim($raceCategory))) {
+            '3k', '3k run', '3 km' => '3',
+            '5k', '5k run', '5 km' => '5',
+            '10k', '10k run', '10 km' => '1',
+            default => '5', // fallback to 5K prefix
+        };
+
+        // Try up to 20 times to find a unique BIB
+        $attempts = 0;
+        do {
+            $bib = $prefix.str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+            $exists = Registration::where('bib_number', $bib)->exists();
+            $attempts++;
+        } while ($exists && $attempts < 20);
+
+        return $bib;
     }
 }

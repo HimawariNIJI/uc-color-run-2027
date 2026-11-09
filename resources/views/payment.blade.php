@@ -16,6 +16,7 @@
 
   <!-- Initial Server Data Carrier -->
   <div id="initialPaymentData" 
+       data-order-id="{{ $orderId ?? '' }}"
        data-name="{{ $participantName }}" 
        data-category="{{ $raceCategory }}" 
        data-tshirt="{{ $tshirtSize }}" 

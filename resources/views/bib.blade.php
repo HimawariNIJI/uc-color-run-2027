@@ -32,7 +32,7 @@
                 <hr class="divider">
             </div>
 
-            @if(!$registration || $registration->payment_status !== 'Paid')
+            @if(!$registration || ! $registration->isPaid())
                 <div id="stateUnregistered" class="bib-state">
                     <div class="cube-icon">⬡</div>
                     <h3>Your BIB Is Not Available Yet</h3>
