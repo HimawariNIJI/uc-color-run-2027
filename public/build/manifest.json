@@ -1,0 +1,69 @@
+{
+  "_afacad-flux-400-800-normal-C3i9YFe7.woff": {
+    "file": "assets/afacad-flux-400-800-normal-C3i9YFe7.woff",
+    "src": "_afacad-flux-400-800-normal-C3i9YFe7.woff"
+  },
+  "_belanosima-400-normal-BgqrBtk8.ttf": {
+    "file": "assets/belanosima-400-normal-BgqrBtk8.ttf",
+    "src": "_belanosima-400-normal-BgqrBtk8.ttf"
+  },
+  "_fonts-C-LP1l7o.css": {
+    "file": "assets/fonts-C-LP1l7o.css",
+    "src": "_fonts-C-LP1l7o.css"
+  },
+  "_submit-guard-BPwA7U7j.js": {
+    "file": "assets/submit-guard-BPwA7U7j.js",
+    "name": "submit-guard"
+  },
+  "node_modules/jsqr/dist/jsQR.js": {
+    "file": "assets/jsQR-BTQRfesN.js",
+    "name": "jsQR",
+    "src": "node_modules/jsqr/dist/jsQR.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/modules/admin/qr-scanner.js"
+    ]
+  },
+  "resources/css/app.css": {
+    "file": "assets/app-Dh6_Xm8u.css",
+    "name": "app",
+    "names": [
+      "app.css"
+    ],
+    "src": "resources/css/app.css",
+    "isEntry": true
+  },
+  "resources/js/admin.js": {
+    "file": "assets/admin-CnK-sZk4.js",
+    "name": "admin",
+    "src": "resources/js/admin.js",
+    "isEntry": true,
+    "imports": [
+      "_submit-guard-BPwA7U7j.js"
+    ],
+    "dynamicImports": [
+      "resources/js/modules/admin/qr-scanner.js"
+    ]
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-DJ98HM5z.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true,
+    "imports": [
+      "_submit-guard-BPwA7U7j.js"
+    ]
+  },
+  "resources/js/modules/admin/qr-scanner.js": {
+    "file": "assets/qr-scanner-D9h_sKv4.js",
+    "name": "qr-scanner",
+    "src": "resources/js/modules/admin/qr-scanner.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/admin.js"
+    ],
+    "dynamicImports": [
+      "node_modules/jsqr/dist/jsQR.js"
+    ]
+  }
+}

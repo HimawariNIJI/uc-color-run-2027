@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "style": {
+    "file": "assets/fonts-C-LP1l7o.css",
+    "familyStyles": {
+      "afacad-flux": "@font-face {\n  font-family: \"Afacad Flux\";\n  font-style: normal;\n  font-weight: 400 800;\n  font-display: swap;\n  src: url(\"/build/assets/afacad-flux-400-800-normal-C3i9YFe7.woff\") format(\"woff\");\n}\n\n.font-afacad-flux {\n  font-family: var(--font-afacad-flux);\n}",
+      "belanosima": "@font-face {\n  font-family: \"Belanosima\";\n  font-style: normal;\n  font-weight: 400;\n  font-display: swap;\n  src: url(\"/build/assets/belanosima-400-normal-BgqrBtk8.ttf\") format(\"truetype\");\n}\n\n.font-belanosima {\n  font-family: var(--font-belanosima);\n}"
+    },
+    "variables": {
+      "afacad-flux": "--font-afacad-flux: \"Afacad Flux\", ui-sans-serif, system-ui, sans-serif;",
+      "belanosima": "--font-belanosima: \"Belanosima\", ui-rounded, system-ui, sans-serif;"
+    }
+  },
+  "preloads": [],
+  "families": {
+    "afacad-flux": {
+      "family": "Afacad Flux",
+      "variable": "--font-afacad-flux",
+      "fallbacks": [
+        "ui-sans-serif",
+        "system-ui",
+        "sans-serif"
+      ],
+      "variants": {
+        "400 800:normal": {
+          "files": [
+            {
+              "file": "assets/afacad-flux-400-800-normal-C3i9YFe7.woff",
+              "format": "woff"
+            }
+          ]
+        }
+      }
+    },
+    "belanosima": {
+      "family": "Belanosima",
+      "variable": "--font-belanosima",
+      "fallbacks": [
+        "ui-rounded",
+        "system-ui",
+        "sans-serif"
+      ],
+      "variants": {
+        "400:normal": {
+          "files": [
+            {
+              "file": "assets/belanosima-400-normal-BgqrBtk8.ttf",
+              "format": "ttf"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

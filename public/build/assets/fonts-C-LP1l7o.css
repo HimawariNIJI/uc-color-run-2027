@@ -1,0 +1,28 @@
+@font-face {
+  font-family: "Afacad Flux";
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("/build/assets/afacad-flux-400-800-normal-C3i9YFe7.woff") format("woff");
+}
+
+@font-face {
+  font-family: "Belanosima";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/build/assets/belanosima-400-normal-BgqrBtk8.ttf") format("truetype");
+}
+
+:root {
+  --font-afacad-flux: "Afacad Flux", ui-sans-serif, system-ui, sans-serif;
+  --font-belanosima: "Belanosima", ui-rounded, system-ui, sans-serif;
+}
+
+.font-afacad-flux {
+  font-family: var(--font-afacad-flux);
+}
+
+.font-belanosima {
+  font-family: var(--font-belanosima);
+}
