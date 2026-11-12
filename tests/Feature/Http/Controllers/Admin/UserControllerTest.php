@@ -11,14 +11,14 @@ beforeEach(function () {
 it('lists accounts with their last login and BIB number, latest sign-in first', function () {
     $this->travelTo('2026-10-21 10:42:00');
     User::factory()->create(['name' => 'Belum Pernah Login']);
-    Registration::factory()->paid()->for(User::factory()->create(['name' => 'Rina Wijaya', 'last_login_at' => now()]))->create(['bib_number' => '50012']);
+    Registration::factory()->paid()->for(User::factory()->create(['name' => 'Rina Wijaya', 'last_login_at' => now()]))->create(['bib_number' => '0520012']);
     User::factory()->create(['name' => 'Budi Santoso', 'last_login_at' => now()->subDay()]);
 
     $this->actingAs($this->admin, 'admin')
         ->get(route('admin.users.index'))
         ->assertOk()
         ->assertSee(['User Accounts', 'Google accounts that have accessed the event website', 'Export CSV', '3 accounts displayed'])
-        ->assertSeeInOrder(['Rina Wijaya', '21 Okt 2026, 10:42', '50012', 'Budi Santoso', '20 Okt 2026, 10:42', 'Belum Pernah Login']);
+        ->assertSeeInOrder(['Rina Wijaya', '21 Okt 2026, 10:42', '0520012', 'Budi Santoso', '20 Okt 2026, 10:42', 'Belum Pernah Login']);
 });
 
 it('searches accounts by name or email', function () {

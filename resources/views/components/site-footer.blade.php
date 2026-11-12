@@ -54,12 +54,12 @@
                         </a>
                     </li>
                     <li>
-                        <a href="{{ $contacts['whatsapp']['url'] }}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 {{ $linkClasses }}">
-                            <x-icon name="message-circle" class="size-4" />{{ $contacts['whatsapp']['display'] }}
+                        <a href="{{ $contacts['line']['url'] }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 {{ $linkClasses }}" aria-label="LINE {{ $contacts['line']['display'] }}">
+                            <x-icon name="message-circle" class="size-4" />{{ $contacts['line']['display'] }}
                         </a>
                     </li>
                     <li>
-                        <a href="{{ $contacts['instagram']['url'] }}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 {{ $linkClasses }}">
+                        <a href="{{ $contacts['instagram']['url'] }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 {{ $linkClasses }}" aria-label="Instagram {{ $contacts['instagram']['display'] }}">
                             <x-icon name="instagram" class="size-4" />{{ $contacts['instagram']['display'] }}
                         </a>
                     </li>

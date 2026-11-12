@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Enums\FeePeriod;
 use App\Enums\Gender;
+use App\Enums\IdentityDocument;
 use App\Enums\PaymentStatus;
 use App\Enums\RaceCategory;
 use App\Enums\RegistrationType;
@@ -12,7 +13,10 @@ use App\Models\Admin;
 use App\Models\Registration;
 use App\Models\TicketPrice;
 use App\Models\User;
+use App\Support\BibNumber;
+use App\Support\IdentityPhoto;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Http\UploadedFile;
 
 /**
  * @extends Factory<Registration>
@@ -38,10 +42,11 @@ class RegistrationFactory extends Factory
             'phone' => '08'.fake()->numerify('##########'),
             'birth_date' => fake()->dateTimeBetween('-50 years', '-17 years'),
             'gender' => fake()->randomElement(Gender::cases()),
-            'identity_number' => fake()->numerify('################'),
             'tshirt_size' => fake()->randomElement(TshirtSize::cases()),
             'emergency_contact_name' => fake()->name(),
             'emergency_contact_phone' => '08'.fake()->numerify('##########'),
+            'medical_history' => 'Tidak Ada',
+            'drug_allergies' => 'Tidak Ada',
             'province' => 'Jawa Timur',
             'city' => 'Kota Surabaya',
             'address' => fake()->streetAddress(),
@@ -53,17 +58,23 @@ class RegistrationFactory extends Factory
     }
 
     /**
-     * Link each registration to the seeded package matching its type, price type and distance.
+     * Link each registration to the seeded package matching its type, price type and distance, and
+     * give paid ones a 7-digit BIB of that package. Factory BIBs use sequences from 5000 up, so they
+     * never collide with numbers issued through the real payment flow in the same test.
      */
     public function configure(): static
     {
         return $this->afterMaking(function (Registration $registration): void {
-            if ($registration->ticket_price_id !== null) {
-                return;
+            if ($registration->ticket_price_id === null) {
+                $priceType = $registration->type === RegistrationType::Bundling ? null : $registration->fee_period;
+                $registration->ticket_price_id = TicketPrice::findOption($registration->type, $priceType, $registration->category)?->getKey();
             }
 
-            $priceType = $registration->type === RegistrationType::Bundling ? null : $registration->fee_period;
-            $registration->ticket_price_id = TicketPrice::findOption($registration->type, $priceType, $registration->category)?->getKey();
+            $package = $registration->package();
+
+            if ($registration->isPaid() && $registration->bib_number === null && $package !== null) {
+                $registration->bib_number = BibNumber::make($package->bibPrefix(), fake()->unique()->numberBetween(5000, BibNumber::MAX_SEQUENCE));
+            }
         });
     }
 
@@ -76,6 +87,39 @@ class RegistrationFactory extends Factory
             'type' => RegistrationType::Bundling,
             'category' => $bundleType === 'family' ? RaceCategory::ThreeK : RaceCategory::FiveK,
             'fee_period' => null,
+        ]);
+    }
+
+    /**
+     * With a KTP photo on the private identity photo disk (fake that disk in tests).
+     */
+    public function withKtpPhoto(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'ktp_photo_path' => UploadedFile::fake()->image('ktp.jpg', 856, 540)->store(IdentityDocument::Ktp->value, IdentityPhoto::DISK),
+        ]);
+    }
+
+    /**
+     * A Family Bundle with a photo of the family's Kartu Keluarga (fake the photo disk in tests).
+     */
+    public function withFamilyCardPhoto(): static
+    {
+        return $this->bundle('family')->state(fn (array $attributes) => [
+            'family_card_photo_path' => UploadedFile::fake()->image('kk.jpg', 1100, 780)->store(IdentityDocument::FamilyCard->value, IdentityPhoto::DISK),
+        ]);
+    }
+
+    /**
+     * Made before the KTP photo and medical fields existed: a typed KTP/Passport number instead.
+     */
+    public function beforeKtpPhoto(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'identity_number' => fake()->numerify('################'),
+            'ktp_photo_path' => null,
+            'medical_history' => null,
+            'drug_allergies' => null,
         ]);
     }
 
@@ -96,7 +140,6 @@ class RegistrationFactory extends Factory
             'payment_expires_at' => null,
             'paid_at' => now(),
             'transaction_id' => 'PAY-'.fake()->unique()->bothify('UCR-2027-?????'),
-            'bib_number' => fake()->unique()->numerify('5####'),
         ]);
     }
 

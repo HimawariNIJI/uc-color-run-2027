@@ -6,7 +6,7 @@
                     <div>
                         <h1 class="text-h2 uppercase text-primary">Apa itu UC Color Run?</h1>
                         <p class="mt-4 text-body text-muted">
-                            UC Color Run adalah acara lari tahunan Universitas Ciputra yang memadukan olahraga, musik, dan perayaan warna. Di setiap color zone, peserta disambut lemparan bubuk warna yang aman sehingga garis finish dipenuhi pelari yang berwarna-warni. Acara ini terbuka untuk mahasiswa, alumni, keluarga, hingga masyarakat umum.
+                            UC Color Run merupakan acara lari tahunan yang diselenggarakan oleh Student Council Universitas Ciputra Surabaya, menggabungkan olahraga, hiburan, dan kebersamaan dalam satu pengalaman yang seru. Peserta dapat memilih kategori lari 3K, 5K, atau 10K sesuai kemampuan masing-masing. Setelah menyelesaikan rute lari, keseruan berlanjut dengan berbagai hiburan seperti DJ performance, bazaar, serta color powder party yang menjadi puncak perayaan penuh warna bersama seluruh peserta.
                         </p>
                     </div>
                     <x-media
@@ -20,7 +20,7 @@
                     <div class="md:order-last md:text-right">
                         <h2 class="text-h2 uppercase text-primary">Latar Belakang</h2>
                         <p class="mt-4 text-body text-muted">
-                            Berawal dari keinginan untuk mendekatkan kampus dengan masyarakat, UC Color Run hadir sebagai ruang bertemu yang sehat dan menyenangkan. Sejalan dengan semangat entrepreneurship Universitas Ciputra, acara ini dikelola oleh mahasiswa sebagai wadah belajar merancang dan menjalankan event berskala besar.
+                            UC Color Run berawal dari keinginan untuk mendekatkan Universitas Ciputra dengan masyarakat melalui kegiatan yang menggabungkan olahraga, hiburan, dan kebersamaan. Sejalan dengan semangat entrepreneurship Universitas Ciputra, acara ini diinisiasi dan dikelola oleh Student Council sebagai wadah bagi mahasiswa untuk mengembangkan kreativitas, kemampuan berorganisasi, serta pengalaman dalam merancang dan menyelenggarakan event berskala besar.
                         </p>
                     </div>
                     <x-media

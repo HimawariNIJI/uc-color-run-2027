@@ -98,4 +98,21 @@ export function initAdminModal(root) {
         opener?.focus();
         opener = null;
     });
+
+    // Other scripts can show server-rendered details they already have, for example the QR
+    // scanner's result: document.dispatchEvent(new CustomEvent('admin-modal:show', { detail: { html } })).
+    document.addEventListener('admin-modal:show', (event) => {
+        controller?.abort();
+        opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+        // The fragment is server-rendered Blade with all values escaped.
+        body.innerHTML = event.detail.html;
+
+        if (!dialog.open) {
+            dialog.showModal();
+        }
+
+        dialog.scrollTop = 0;
+        dialog.querySelector('#admin-modal-title')?.focus();
+    });
 }

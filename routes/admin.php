@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\QrScannerController;
 use App\Http\Controllers\Admin\RegistrationController;
 use App\Http\Controllers\Admin\RegistrationExportController;
+use App\Http\Controllers\Admin\RegistrationIdentityPhotoController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\UserExportController;
 use Illuminate\Support\Facades\Route;
@@ -27,8 +28,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/registrations', [RegistrationController::class, 'index'])->name('registrations.index');
         Route::get('/registrations/export', RegistrationExportController::class)->name('registrations.export');
         Route::get('/registrations/{registration:code}', [RegistrationController::class, 'show'])->name('registrations.show');
+        Route::get('/registrations/{registration:code}/identity-photo', RegistrationIdentityPhotoController::class)->name('registrations.identity-photo');
 
         Route::get('/qr-scanner', [QrScannerController::class, 'index'])->name('scanner.index');
         Route::post('/qr-scanner', [QrScannerController::class, 'store'])->middleware('throttle:60,1')->name('scanner.store');
+        Route::get('/qr-scanner/scans/{scan}', [QrScannerController::class, 'show'])->name('scanner.show');
     });
 });

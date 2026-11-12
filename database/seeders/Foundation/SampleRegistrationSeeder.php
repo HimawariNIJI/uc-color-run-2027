@@ -173,7 +173,7 @@ class SampleRegistrationSeeder extends Seeder
         $subtotal = number_format((float) $ticketPrice->price * $quantity, 2, '.', '');
 
         $prefix = BibNumber::prefix($sample['race_category'], $sample['price_type'], $sample['registration_type'], $sample['bundle_type']);
-        $registrationCode = BibNumber::registrationCode(BibNumber::make($prefix, $sample['sequence']));
+        $registrationCode = BibNumber::participantId(BibNumber::make($prefix, $sample['sequence']));
 
         $payments = $this->paymentAttempts($sample['payments'], $registeredAt);
         $confirmedAt = $sample['status'] === 'confirmed' ? collect($payments)->firstWhere('status', 'success')['paid_at'] : null;

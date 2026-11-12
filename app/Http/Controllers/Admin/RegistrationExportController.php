@@ -14,7 +14,8 @@ class RegistrationExportController extends Controller
     /**
      * Download the registrations matching the current filters as CSV.
      *
-     * KTP/Passport numbers are left out on purpose: exported files tend to be forwarded.
+     * KTP/Passport numbers, KTP photos and medical information (Riwayat Penyakit, Alergi Obat)
+     * are left out on purpose: exported files tend to be forwarded.
      */
     public function __invoke(Request $request): StreamedResponse
     {
@@ -25,7 +26,7 @@ class RegistrationExportController extends Controller
         return CsvExport::download(
             CsvExport::filename('registrations'),
             [
-                'Registration ID', 'Registration Type', 'Race Category', 'Full Name', 'Email Address', 'Phone Number',
+                'Registration ID', 'Registration Type', 'Race Category', 'Full Nama (Nama Pembayar)', 'Email Address', 'Phone Number',
                 'Date of Birth', 'Gender', 'T-shirt Size', 'Emergency Contact Name', 'Emergency Contact Phone',
                 'Province', 'City', 'Full Address', 'Price Type', 'Amount', 'Payment Status', 'Registration Date',
                 'Payment Date', 'Transaction ID', 'BIB Number', 'BIB Collected At',
@@ -52,7 +53,7 @@ class RegistrationExportController extends Controller
                 $registration->created_at->format('Y-m-d H:i'),
                 $registration->paid_at?->format('Y-m-d H:i'),
                 $registration->transaction_id,
-                $registration->bib_number,
+                CsvExport::digits($registration->bib_number),
                 $registration->bib_collected_at?->format('Y-m-d H:i'),
             ],
         );

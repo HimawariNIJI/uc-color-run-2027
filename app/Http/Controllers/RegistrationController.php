@@ -5,12 +5,14 @@ namespace App\Http\Controllers;
 use App\Enums\FeePeriod;
 use App\Enums\RaceCategory;
 use App\Enums\RegistrationType;
+use App\Exceptions\BibNumbersExhausted;
 use App\Http\Requests\BundleRegistrationRequest;
 use App\Http\Requests\RegistrationRequest;
 use App\Models\Registration;
 use App\Models\TicketPrice;
 use App\Models\User;
 use App\Support\BibNumber;
+use App\Support\IdentityPhoto;
 use App\Support\IndonesiaRegions;
 use App\Support\QrisCheckout;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -18,6 +20,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use Throwable;
 
 /**
  * Registration steps for the official packages in ticket_prices:
@@ -115,7 +118,7 @@ class RegistrationController extends Controller
     {
         $package = TicketPrice::findOption($type, $priceType, $category) ?? abort(404);
 
-        return $this->register($request, $package, $request->safe()->except('agreement'));
+        return $this->register($request, $package, $request->participant());
     }
 
     public function createBundle(Request $request, string $bundle): View|RedirectResponse
@@ -137,7 +140,7 @@ class RegistrationController extends Controller
     {
         $package = TicketPrice::findBundle($bundle) ?? abort(404);
 
-        return $this->register($request, $package, $request->safe()->except(['agreement', 'members']), $request->members());
+        return $this->register($request, $package, $request->participant(), $request->members());
     }
 
     private function form(User $user, TicketPrice $package, string $action): View
@@ -158,8 +161,16 @@ class RegistrationController extends Controller
 
     /**
      * Create the registration while the package row is locked, so simultaneous sign-ups can never
-     * exceed its quota or receive the same number. The amount is the package's price in the
+     * exceed its quota or receive the same code. The amount is the package's price in the
      * database and the email is the signed-in account's; nothing from the browser decides either.
+     *
+     * The registration code ("UCCR-052-0001") is given in the same transaction and never changes.
+     * No BIB is handed out yet: BIBs follow the order in which payments are confirmed (see
+     * Registration::markAsPaid). Registering is refused up front when the package's BIB numbers
+     * could no longer cover every participant.
+     *
+     * The identity photo (KTP, or Kartu Keluarga for a Family Bundle) is saved first, so the lock
+     * is not held while the file is written, and removed again whenever the registration is not created.
      *
      * @param  array<string, mixed>  $participant  validated account holder fields
      * @param  list<array<string, mixed>>  $members  validated bundle members
@@ -172,18 +183,24 @@ class RegistrationController extends Controller
             return $redirect;
         }
 
+        $document = $request->identityDocument();
+        $identityPhotoPath = IdentityPhoto::store($request->identityPhoto(), $document);
+
         try {
-            $registration = DB::transaction(function () use ($package, $participant, $members, $user): ?Registration {
+            $registration = DB::transaction(function () use ($package, $participant, $members, $user, $document, $identityPhotoPath): ?Registration {
                 $locked = $package->lockForRegistration();
 
                 if (! $locked->isOpen()) {
                     return null;
                 }
 
+                BibNumber::ensureAvailable($locked->bibPrefix(), count($members) + 1);
+
                 $registration = $user->registration()->create([
                     ...$participant,
+                    $document->column() => $identityPhotoPath,
                     'ticket_price_id' => $locked->getKey(),
-                    'code' => BibNumber::registrationCode(BibNumber::next($locked->bibPrefix())),
+                    'code' => BibNumber::nextRegistrationCode($locked->bibPrefix()),
                     'type' => $locked->registration_type,
                     'category' => $locked->race_category,
                     'fee_period' => $locked->price_type,
@@ -197,15 +214,28 @@ class RegistrationController extends Controller
                 return $registration;
             });
         } catch (UniqueConstraintViolationException $exception) {
+            IdentityPhoto::delete($identityPhotoPath);
+
             // A double submit: the first request already created this account's registration.
             if ($user->registration()->exists()) {
                 return to_route('payment.show');
             }
 
             throw $exception;
+        } catch (BibNumbersExhausted) {
+            IdentityPhoto::delete($identityPhotoPath);
+
+            return $this->packageChoice($package)
+                ->with('error', "Nomor BIB untuk paket {$package->name()} ({$package->eligibility()}) sudah habis (maksimal 9999 peserta), jadi pendaftaran paket ini ditutup. Silakan pilih paket lain atau hubungi panitia.");
+        } catch (Throwable $exception) {
+            IdentityPhoto::delete($identityPhotoPath);
+
+            throw $exception;
         }
 
         if ($registration === null) {
+            IdentityPhoto::delete($identityPhotoPath);
+
             return $this->packageClosedDuringSignUp($request, $package);
         }
 
@@ -226,21 +256,27 @@ class RegistrationController extends Controller
         $current = $package->fresh() ?? $package;
         $message = $current->unavailableMessage() ?? 'Paket ini sedang tidak tersedia.';
 
-        if ($package->isBundle()) {
-            return to_route('registration.price', RegistrationType::Bundling)->with('error', $message);
-        }
-
-        $normalBid = $package->price_type === FeePeriod::EarlyBird
+        $normalBid = $package->price_type === FeePeriod::EarlyBird && $current->isSoldOut()
             ? TicketPrice::findOption($package->registration_type, FeePeriod::Regular, $package->race_category)
             : null;
 
         if ($normalBid?->isOpen()) {
             return to_route('registration.create', [$package->registration_type, FeePeriod::Regular->slug(), $package->race_category])
                 ->withInput($request->except('agreement'))
-                ->with('error', "Maaf, kuota {$package->name()} {$package->registration_type->label()} baru saja habis. Datamu masih tersimpan di formulir ini dengan Normal Bid. Periksa kembali lalu kirim ulang.");
+                ->with('error', "Maaf, kuota {$package->name()} {$package->registration_type->label()} baru saja habis. Datamu masih tersimpan di formulir ini dengan Normal Bid. Pilih ulang Foto KTP, periksa kembali, lalu kirim ulang.");
         }
 
-        return to_route('registration.category', [$package->registration_type, $package->price_type->slug()])->with('error', $message);
+        return $this->packageChoice($package)->with('error', $message);
+    }
+
+    /**
+     * Back to the page where the package was chosen: the bundle list or the distances of its price type.
+     */
+    private function packageChoice(TicketPrice $package): RedirectResponse
+    {
+        return $package->isBundle()
+            ? to_route('registration.price', RegistrationType::Bundling)
+            : to_route('registration.category', [$package->registration_type, $package->price_type->slug()]);
     }
 
     private function redirectIfAlreadyRegistered(?User $user): ?RedirectResponse

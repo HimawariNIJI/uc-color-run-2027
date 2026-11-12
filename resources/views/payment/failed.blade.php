@@ -20,15 +20,27 @@
 
         <div class="rounded-2xl border border-border px-5 py-6">
             <x-state-message icon="circle-x" title="Transaksi Belum Berhasil" tone="error">
-                Pembayaran kamu belum diterima. Silakan coba kembali atau periksa status transaksi sebelum melakukan pembayaran ulang.
+                @if ($retryBlockedReason === null)
+                    Pembayaran kamu belum diterima. Silakan coba kembali atau periksa status transaksi sebelum melakukan pembayaran ulang.
+                @else
+                    Pembayaran kamu belum diterima.
+                @endif
             </x-state-message>
         </div>
 
+        @if ($retryBlockedReason !== null && session('error') !== $retryBlockedReason)
+            <x-alert tone="error" title="Pembayaran ulang tidak tersedia">{{ $retryBlockedReason }}</x-alert>
+        @endif
+
         <div class="flex flex-col gap-3">
-            <form method="POST" action="{{ route('payment.retry') }}" data-submit-guard>
-                @csrf
-                <x-button type="submit" size="lg" pill block>Coba Bayar Lagi</x-button>
-            </form>
+            @if ($retryBlockedReason === null)
+                <form method="POST" action="{{ route('payment.retry') }}" data-submit-guard>
+                    @csrf
+                    <x-button type="submit" size="lg" pill block data-busy-label="Membuat kode QRIS…">Coba Bayar Lagi</x-button>
+                </form>
+            @else
+                <x-button type="button" size="lg" pill block disabled>Coba Bayar Lagi</x-button>
+            @endif
             <form method="POST" action="{{ route('payment.check') }}" data-submit-guard>
                 @csrf
                 <x-button type="submit" variant="secondary" size="lg" pill block data-busy-label="Mengecek status…">Cek Status Pembayaran</x-button>

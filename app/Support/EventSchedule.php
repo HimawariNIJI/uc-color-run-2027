@@ -55,7 +55,8 @@ class EventSchedule
     }
 
     /**
-     * Format a date range in Indonesian, for example "1 Nov – 15 Des 2026".
+     * Format a date range in Indonesian with full month names: "11 April 2027",
+     * "8–10 April 2027", "5 Februari – 28 Maret 2027" or "5 Desember 2026 – 28 Maret 2027".
      */
     public static function formatRange(CarbonInterface $startsAt, CarbonInterface $endsAt): string
     {
@@ -63,8 +64,12 @@ class EventSchedule
             return $startsAt->translatedFormat('j F Y');
         }
 
-        $startFormat = $startsAt->isSameYear($endsAt) ? 'j M' : 'j M Y';
+        if ($startsAt->isSameMonth($endsAt)) {
+            return $startsAt->format('j').'–'.$endsAt->translatedFormat('j F Y');
+        }
 
-        return $startsAt->translatedFormat($startFormat).' – '.$endsAt->translatedFormat('j M Y');
+        $startFormat = $startsAt->isSameYear($endsAt) ? 'j F' : 'j F Y';
+
+        return $startsAt->translatedFormat($startFormat).' – '.$endsAt->translatedFormat('j F Y');
     }
 }

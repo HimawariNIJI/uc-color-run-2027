@@ -8,7 +8,7 @@ it('downloads the accounts matching the search as CSV', function () {
     $this->travelTo('2026-10-21 10:42:00');
     Registration::factory()->paid()
         ->for(User::factory()->create(['name' => 'Rina Wijaya', 'email' => 'rina@example.com', 'google_id' => 'g-1', 'last_login_at' => now()]))
-        ->create(['code' => 'UCR-2027-ABCDE', 'bib_number' => '50012']);
+        ->create(['code' => 'UCR-2027-ABCDE', 'bib_number' => '0520012']);
     User::factory()->create(['name' => 'Budi Santoso', 'email' => 'budi@example.com']);
 
     $response = $this->actingAs(Admin::factory()->create(), 'admin')
@@ -22,7 +22,7 @@ it('downloads the accounts matching the search as CSV', function () {
     expect($csv)
         ->toStartWith("\xEF\xBB\xBF")
         ->toContain('Name,Email,Authentication,"Last Login","Account Created","Registration ID","Registration Status","BIB Number"')
-        ->toContain('"Rina Wijaya",rina@example.com,"Google Sign-In","2026-10-21 10:42","2026-10-21 10:42",UCR-2027-ABCDE,Registered,50012')
+        ->toContain('"Rina Wijaya",rina@example.com,"Google Sign-In","2026-10-21 10:42","2026-10-21 10:42",UCR-2027-ABCDE,Registered,"=""0520012"""')
         ->not->toContain('Budi Santoso');
 });
 

@@ -50,7 +50,7 @@
                         type="text"
                         name="code"
                         id="code"
-                        placeholder="UCR-2027-XXXXX"
+                        placeholder="UCCR-0310001"
                         maxlength="30"
                         autocomplete="off"
                         autocapitalize="characters"
@@ -71,20 +71,21 @@
 
         <h3 class="mt-10 text-body-lg font-semibold">Recent QR Scanned</h3>
 
-        <x-admin.table class="mt-4" label="QR yang baru dipindai" min-width="min-w-[36rem]" body-id="recent-scans">
+        <x-admin.table class="mt-4" label="QR yang baru dipindai" min-width="min-w-[42rem]" body-id="recent-scans">
             <x-slot:head>
                 <th scope="col">Registration ID</th>
                 <th scope="col">Participant</th>
                 <th scope="col">Category</th>
                 <th scope="col">BIB Number</th>
+                <th scope="col">Action</th>
             </x-slot:head>
 
-            @foreach ($recentScans as $registration)
+            @foreach ($recentScans as $scan)
                 @include('admin.scanner.partials.scan-row')
             @endforeach
 
-            <x-admin.empty-row colspan="4" icon="scan-qr-code" title="Belum ada QR yang dipindai." :hidden="$recentScans->isNotEmpty()" data-scanner-empty>
-                Peserta yang sudah mengambil BIB akan muncul di sini.
+            <x-admin.empty-row colspan="5" icon="scan-qr-code" title="Belum ada QR yang dipindai." :hidden="$recentScans->isNotEmpty()" data-scanner-empty>
+                QR racepack yang berhasil dipindai akan muncul di sini.
             </x-admin.empty-row>
         </x-admin.table>
     </x-admin.card>

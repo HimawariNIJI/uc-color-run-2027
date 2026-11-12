@@ -23,8 +23,9 @@ use Illuminate\Support\Str;
  *
  * Paid registrations and registrations whose QRIS payment has not expired yet hold a slot;
  * expired or failed payments give it back. Individual packages count participants, bundles
- * count whole packages. A package is open only when it is active, its price and quota are both
- * set and slots are left: a missing quota is never treated as zero or as unlimited.
+ * count whole packages (not the BIB numbers they use). A package is open when it is active, its
+ * price is set and slots are left. A null quota means unlimited and is never checked (the Normal
+ * External packages); 0 means no slots at all.
  */
 #[Fillable(['registration_type', 'bundle_type', 'race_category', 'price_type', 'price_basis', 'max_participants', 'price', 'quota', 'is_active'])]
 class TicketPrice extends Model
@@ -115,6 +116,14 @@ class TicketPrice extends Model
     }
 
     /**
+     * The Family Bundle proves identity with the family's Kartu Keluarga instead of a KTP.
+     */
+    public function isFamilyBundle(): bool
+    {
+        return $this->bundle_type === 'family';
+    }
+
+    /**
      * Official package name, for example "3K Early Bid" or "3K Family Bundle".
      */
     public function name(): string
@@ -131,11 +140,12 @@ class TicketPrice extends Model
     }
 
     /**
-     * Who the package is for: "Internal", "External" or "Maks. 4 peserta" for a bundle.
+     * Who the package is for: "Internal", "External" or "4 peserta" for a bundle. A bundle is for
+     * exactly max_participants people: the Family Bundle 4, the Couple Bundle 2.
      */
     public function eligibility(): string
     {
-        return $this->isBundle() ? "Maks. {$this->max_participants} peserta" : $this->registration_type->label();
+        return $this->isBundle() ? "{$this->max_participants} peserta" : $this->registration_type->label();
     }
 
     public function takenSlots(): int
@@ -143,19 +153,30 @@ class TicketPrice extends Model
         return (int) ($this->taken_count ?? $this->registrations()->holdingSlot()->count());
     }
 
+    /**
+     * A null quota means unlimited (the Normal External packages): the quota is never checked.
+     */
+    public function hasUnlimitedQuota(): bool
+    {
+        return $this->quota === null;
+    }
+
+    /**
+     * Slots left, or null when the quota is unlimited.
+     */
     public function remaining(): ?int
     {
-        return $this->quota === null ? null : max(0, $this->quota - $this->takenSlots());
+        return $this->hasUnlimitedQuota() ? null : max(0, $this->quota - $this->takenSlots());
     }
 
     public function isSoldOut(): bool
     {
-        return $this->remaining() === 0;
+        return ! $this->hasUnlimitedQuota() && $this->remaining() === 0;
     }
 
     public function isOpen(): bool
     {
-        return $this->is_active && $this->price !== null && $this->quota !== null && ! $this->isSoldOut();
+        return $this->is_active && $this->price !== null && ! $this->isSoldOut();
     }
 
     public function priceLabel(): string
@@ -164,14 +185,14 @@ class TicketPrice extends Model
     }
 
     /**
-     * For example "Kuota 75 slot", "Sisa 12 dari 75 slot", "Kuota 20 paket" or "Kuota belum diumumkan".
+     * For example "Kuota 75 slot", "Sisa 12 dari 75 slot", "Kuota 20 paket" or "Kuota tidak terbatas".
      */
     public function quotaLabel(): string
     {
         $unit = $this->isBundle() ? 'paket' : 'slot';
 
         return match (true) {
-            $this->quota === null => 'Kuota belum diumumkan',
+            $this->hasUnlimitedQuota() => 'Kuota tidak terbatas',
             $this->isSoldOut() => 'Sold out',
             $this->takenSlots() === 0 => 'Kuota '.NumberFormat::integer($this->quota).' '.$unit,
             default => 'Sisa '.NumberFormat::integer($this->remaining()).' dari '.NumberFormat::integer($this->quota).' '.$unit,
@@ -189,13 +210,13 @@ class TicketPrice extends Model
             $this->isSoldOut() => "Kuota paket {$package} sudah habis. Silakan pilih paket lain.",
             ! $this->is_active => "Paket {$package} sedang tidak tersedia.",
             $this->price === null => "Harga paket {$package} belum diumumkan, jadi pendaftarannya belum dibuka.",
-            $this->quota === null => "Kuota paket {$package} belum diumumkan, jadi pendaftarannya belum dibuka.",
             default => null,
         };
     }
 
     /**
-     * The first six digits of every BIB and registration number in this package.
+     * The official 3-digit prefix of every BIB in this package, for example "031" for 3K Early
+     * Bird Internal (see BibNumber::PREFIXES).
      */
     public function bibPrefix(): string
     {

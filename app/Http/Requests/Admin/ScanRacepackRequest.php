@@ -7,7 +7,9 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 
 /**
- * A racepack collection check: either a scanned QR payload or a typed registration ID.
+ * A racepack desk check: either a scanned QR payload or a typed ID (a registration code or one
+ * participant's "UCCR-{BIB}"). Only the text is taken from the browser; everything else is looked
+ * up in the database.
  */
 class ScanRacepackRequest extends FormRequest
 {
@@ -47,7 +49,7 @@ class ScanRacepackRequest extends FormRequest
         return [
             'payload.required_without' => 'Pindai QR code atau masukkan Registration ID.',
             'code.required_without' => 'Masukkan Registration ID peserta.',
-            'max' => 'Data yang dikirim terlalu panjang.',
+            'max' => 'Invalid QR Code: data yang dipindai terlalu panjang.',
         ];
     }
 }

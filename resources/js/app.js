@@ -4,6 +4,7 @@ import { initCollapsibles } from './modules/collapsible';
 import { initCountdowns } from './modules/countdown';
 import { initDismissibles } from './modules/dismissible';
 import { initDropdowns } from './modules/dropdown';
+import { initImageUploads } from './modules/image-upload';
 import { initMobileMenu } from './modules/mobile-menu';
 import { initPaymentStatus } from './modules/payment-status';
 import { initRegionSelects } from './modules/region-select';
@@ -21,6 +22,7 @@ import { initTabs } from './modules/tabs';
     initCarousels,
     initCountdowns,
     initRegionSelects,
+    initImageUploads,
     initSubmitGuards,
     initDismissibles,
     initPaymentStatus,

@@ -54,4 +54,13 @@ return [
         'qris_acquirer' => env('MIDTRANS_QRIS_ACQUIRER', 'gopay'),
     ],
 
+    // The committee's Participants sheet in Google Sheets, written by a service account (see
+    // App\Support\ParticipantsSheet). credentials is the path to the service account's JSON key,
+    // relative to the project folder or absolute; keep the key in secrets/, never in public/.
+    // Leave either value empty to switch the sync off.
+    'google_sheets' => [
+        'spreadsheet_id' => env('GOOGLE_SHEETS_SPREADSHEET_ID'),
+        'credentials' => env('GOOGLE_APPLICATION_CREDENTIALS'),
+    ],
+
 ];

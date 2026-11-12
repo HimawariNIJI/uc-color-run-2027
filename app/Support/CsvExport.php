@@ -48,6 +48,20 @@ class CsvExport
     }
 
     /**
+     * A number whose leading zeros matter, such as a BIB, written so spreadsheet apps keep it as
+     * text: ="0310001" shows 0310001 instead of 310001. Only all-digit values are wrapped, so this
+     * cannot be used to slip in a formula; anything else is written like text().
+     */
+    public static function digits(?string $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return ctype_digit($value) ? '="'.$value.'"' : self::text($value);
+    }
+
+    /**
      * Timestamped file name, for example "uc-color-run-2027-users-20261101-0930.csv".
      */
     public static function filename(string $subject): string

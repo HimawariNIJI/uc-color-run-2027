@@ -32,7 +32,7 @@ class UserExportController extends Controller
                 $user->created_at?->format('Y-m-d H:i'),
                 $user->registration?->code,
                 $user->registration?->payment_status->accountStatusLabel() ?? 'Not Registered',
-                $user->registration?->bib_number,
+                CsvExport::digits($user->registration?->bib_number),
             ],
         );
     }

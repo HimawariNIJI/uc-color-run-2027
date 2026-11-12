@@ -1,10 +1,16 @@
 <?php
 
 use App\Models\Payment;
+use App\Models\Registration;
 use App\Models\TicketPrice;
+use App\Models\User;
+use App\Support\IdentityPhoto;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Http\Client\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -21,7 +27,10 @@ use Tests\TestCase;
 
 pest()->extend(TestCase::class)
     ->use(LazilyRefreshDatabase::class)
-    ->beforeEach(fn () => fakeMidtrans())
+    ->beforeEach(function () {
+        fakeMidtrans();
+        Storage::fake(IdentityPhoto::DISK);
+    })
     ->in('Feature');
 
 /*
@@ -80,12 +89,22 @@ function fakeMidtrans(): void
             $orderId = rawurldecode(Str::between($request->url(), '/v2/', '/status'));
             $payment = Payment::query()->firstWhere('order_id', $orderId);
 
+            if (app()->bound('midtrans.fake.unknown')) {
+                return Http::response(['status_code' => '404', 'status_message' => "Transaction doesn't exist."], 404);
+            }
+
+            $status = app()->bound('midtrans.fake.orders') ? (app('midtrans.fake.orders')[$orderId] ?? null) : null;
+
+            if ($status === false) {
+                return Http::response(['status_code' => '503', 'status_message' => 'Service unavailable.'], 503);
+            }
+
             return Http::response([
                 'status_code' => '200',
                 'order_id' => $orderId,
                 'gross_amount' => number_format($payment->amount ?? 0, 2, '.', ''),
                 'transaction_id' => $payment?->gateway_transaction_id,
-                ...app('midtrans.fake.status'),
+                ...($status ?? app('midtrans.fake.status')),
             ]);
         },
     ]);
@@ -100,6 +119,22 @@ function midtransRefusesCharges(): void
 }
 
 /**
+ * Make the fake Midtrans answer every status check with "Transaction doesn't exist" (HTTP 404).
+ */
+function midtransDoesNotKnowOrders(): void
+{
+    app()->instance('midtrans.fake.unknown', true);
+}
+
+/**
+ * How many QRIS transactions were requested from the fake Midtrans.
+ */
+function qrisChargesSent(): int
+{
+    return Http::recorded(fn (Request $request): bool => str_ends_with($request->url(), '/v2/charge'))->count();
+}
+
+/**
  * What the fake Midtrans reports for status checks, for example "settlement" or "expire".
  *
  * @param  array<string, mixed>  $extra  more response fields, such as a different gross_amount
@@ -107,6 +142,20 @@ function midtransRefusesCharges(): void
 function midtransReports(string $transactionStatus, array $extra = []): void
 {
     app()->instance('midtrans.fake.status', ['transaction_status' => $transactionStatus, 'fraud_status' => 'accept', ...$extra]);
+}
+
+/**
+ * What the fake Midtrans reports for one order only, overriding midtransReports(). Pass null as
+ * the status to make Midtrans unreachable for that order (HTTP 503).
+ *
+ * @param  array<string, mixed>  $extra  more response fields, such as settlement_time
+ */
+function midtransReportsFor(string $orderId, ?string $transactionStatus, array $extra = []): void
+{
+    $orders = app()->bound('midtrans.fake.orders') ? app('midtrans.fake.orders') : [];
+    $orders[$orderId] = $transactionStatus === null ? false : ['transaction_status' => $transactionStatus, 'fraud_status' => 'accept', ...$extra];
+
+    app()->instance('midtrans.fake.orders', $orders);
 }
 
 /**
@@ -144,14 +193,6 @@ function setPackage(string $type, ?string $priceType, string $category, array $o
 }
 
 /**
- * Give the packages whose quota was not announced a test quota, so every package can be registered.
- */
-function openAllPackages(): void
-{
-    TicketPrice::query()->whereNull('quota')->update(['quota' => 100]);
-}
-
-/**
  * A valid participant form submission.
  *
  * @param  array<string, mixed>  $overrides
@@ -164,10 +205,12 @@ function registrationPayload(array $overrides = []): array
         'phone' => '081234567890',
         'birth_date' => '1999-05-12',
         'gender' => 'male',
-        'identity_number' => '3578011205990001',
+        'ktp_photo' => UploadedFile::fake()->image('ktp.jpg', 1200, 760),
         'tshirt_size' => 'M',
         'emergency_contact_name' => 'Siti Santoso',
         'emergency_contact_phone' => '081298765432',
+        'medical_history' => 'Tidak Ada',
+        'drug_allergies' => 'Tidak Ada',
         'province' => 'Jawa Timur',
         'city' => 'Kota Surabaya',
         'address' => 'Jl. Raya CitraLand No. 1, Surabaya',
@@ -177,7 +220,7 @@ function registrationPayload(array $overrides = []): array
 }
 
 /**
- * A valid bundle member row for a bundle form submission.
+ * A valid bundle member row for a Couple Bundle submission (with a KTP/Passport number).
  *
  * @param  array<string, mixed>  $overrides
  * @return array<string, mixed>
@@ -191,6 +234,110 @@ function bundleMember(array $overrides = []): array
         'gender' => 'female',
         'identity_number' => '3578011402000002',
         'tshirt_size' => 'S',
+        'medical_history' => 'Tidak Ada',
+        'drug_allergies' => 'Tidak Ada',
         ...$overrides,
     ];
+}
+
+/**
+ * Register through the real form for one package and return the registration.
+ * $package is "family", "couple" or "{type}/{price type slug}/{distance}".
+ */
+function registerForBib(TestCase $test, string $package): Registration
+{
+    if (in_array($package, ['family', 'couple'], true)) {
+        $user = User::factory()->create();
+        $payload = $package === 'family' ? familyBundlePayload() : registrationPayload(['members' => [bundleMember()]]);
+
+        $test->actingAs($user)->post(route('registration.bundle.store', $package), $payload)->assertRedirect(route('payment.show'));
+    } else {
+        [$type, $priceType, $category] = explode('/', $package);
+        $user = $type === 'internal' ? User::factory()->ucEmail()->create() : User::factory()->create();
+
+        $test->actingAs($user)->post(route('registration.store', [$type, $priceType, $category]), registrationPayload())->assertRedirect(route('payment.show'));
+    }
+
+    return $user->registration()->sole();
+}
+
+/**
+ * A valid Family Bundle submission: the payer with a Kartu Keluarga photo instead of a KTP photo,
+ * and exactly 3 more family members without KTP/Passport numbers.
+ *
+ * @param  array<string, mixed>  $overrides
+ * @return array<string, mixed>
+ */
+function familyBundlePayload(array $overrides = []): array
+{
+    $payload = registrationPayload([
+        'family_card_photo' => UploadedFile::fake()->image('kk.jpg', 1100, 780),
+        'members' => [
+            familyMember(['full_name' => 'Indah Wijaya']),
+            familyMember(['full_name' => 'Joko Wijaya', 'gender' => 'male']),
+            familyMember(['full_name' => 'Kartika Wijaya']),
+        ],
+        ...$overrides,
+    ]);
+    unset($payload['ktp_photo']);
+
+    return $payload;
+}
+
+/**
+ * A valid Family Bundle member row: no KTP/Passport number.
+ *
+ * @param  array<string, mixed>  $overrides
+ * @return array<string, mixed>
+ */
+function familyMember(array $overrides = []): array
+{
+    return [
+        'full_name' => 'Indah Wijaya',
+        'phone' => '',
+        'birth_date' => '2015-02-14',
+        'gender' => 'female',
+        'tshirt_size' => 'S',
+        'medical_history' => 'Tidak Ada',
+        'drug_allergies' => 'Tidak Ada',
+        ...$overrides,
+    ];
+}
+
+/**
+ * The Google Sheets value of a Jakarta date or date and time: days since 30 December 1899.
+ */
+function sheetDate(string $local, bool $withTime = true): int|float
+{
+    $days = Carbon::parse($local, 'UTC')->getTimestamp() / 86400 + 25569;
+
+    return $withTime ? round($days, 8) : (int) $days;
+}
+
+/**
+ * An uploaded file with real content, so its type is read from the content like in production.
+ * (UploadedFile::fake() guesses the type from the file name instead.)
+ */
+function uploadedFile(string $name, string $contents, int $error = UPLOAD_ERR_OK): UploadedFile
+{
+    $path = tempnam(sys_get_temp_dir(), 'upload');
+    file_put_contents($path, $contents);
+
+    return new UploadedFile($path, $name, null, $error, test: true);
+}
+
+/**
+ * An uploaded image drawn with GD in the given format: "jpeg", "png" or "gif".
+ */
+function uploadedImage(string $name, string $format = 'jpeg', int $width = 856, int $height = 540): UploadedFile
+{
+    $image = imagecreatetruecolor($width, $height);
+    ob_start();
+    match ($format) {
+        'png' => imagepng($image),
+        'gif' => imagegif($image),
+        default => imagejpeg($image),
+    };
+
+    return uploadedFile($name, (string) ob_get_clean());
 }

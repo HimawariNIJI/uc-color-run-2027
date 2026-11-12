@@ -18,8 +18,9 @@ return [
 
     'organizer' => 'Universitas Ciputra',
 
-    // Placeholder: confirm the official race day and start time.
-    'race_day' => env('EVENT_RACE_DAY', '2027-03-21 05:30:00'),
+    // Official race day: 11 April 2027. The 05.30 WIB start (first start, 10K) is still a placeholder.
+    // The Race Day countdown counts down to this moment.
+    'race_day' => env('EVENT_RACE_DAY', '2027-04-11 05:30:00'),
 
     // Placeholder: confirm the official venue.
     'venue' => [
@@ -39,10 +40,11 @@ return [
     |
     | price_type: "early_bird" (Early Bid) or "normal" (Normal Bid); bundles have none.
     | quota:      individual packages count participants, bundles count whole packages.
-    |             null = not announced yet (never treated as zero or as unlimited).
+    |             null = unlimited (only the three Normal External packages); never use 0 for that.
     | price:      whole Rupiah for one package (a bundle's price covers the whole bundle);
     |             null = Price To Be Announced. Rp100.000 is TEMPORARY until official prices.
-    | A package can only be registered once both its price and its quota are set.
+    | A package can only be registered once its price is set.
+    | BIB prefixes per package are fixed in App\Support\BibNumber::PREFIXES.
     */
     'packages' => [
         ['race_category' => '3k', 'registration_type' => 'internal', 'price_type' => 'early_bird', 'quota' => 75, 'price' => 100000],
@@ -89,38 +91,40 @@ return [
         ],
     ],
 
-    // Placeholder timeline. Dates are inclusive.
+    // Official event timeline. Dates are inclusive, in Asia/Jakarta time; Race Day must match race_day above.
     'timeline' => [
         [
             'title' => 'Registration Period',
-            'starts_at' => '2026-11-01',
-            'ends_at' => '2027-03-07',
-            'description' => 'Harga Early Bird berlaku selama slot masih tersedia. Setelah slot habis, berlaku Normal Price.',
+            'starts_at' => '2026-12-05',
+            'ends_at' => '2027-03-28',
+            'description' => 'Harga Early Bid berlaku selama kuota masih tersedia. Setelah kuota habis, berlaku Normal Bid.',
         ],
         [
             'title' => 'Racepack Collection',
-            'starts_at' => '2027-03-19',
-            'ends_at' => '2027-03-20',
+            'starts_at' => '2027-04-08',
+            'ends_at' => '2027-04-10',
             'description' => 'Ambil race pack di kampus Universitas Ciputra dengan menunjukkan QR racepack.',
         ],
         [
             'title' => 'Race Day',
-            'starts_at' => '2027-03-21',
-            'ends_at' => '2027-03-21',
+            'starts_at' => '2027-04-11',
+            'ends_at' => '2027-04-11',
             'description' => 'Saatnya berlari, bermain warna, dan merayakan garis finish bersama.',
         ],
     ],
 
-    // Placeholder contact channels.
+    // Official public contact channels, shown on the Contact Us page and in the footer. The Contact Us
+    // form sends to CONTACT_US_EMAIL instead (see config/mail.php).
     'contacts' => [
-        'email' => 'uccolorrun@ciputra.ac.id',
-        'whatsapp' => [
-            'display' => '+62 812-3456-7890',
-            'url' => 'https://wa.me/6281234567890',
+        'email' => 'uccolorrun@gmail.com',
+        'line' => [
+            'display' => '@971xdxwx',
+            // Opens the chat with the official account directly in LINE.
+            'url' => 'https://line.me/R/ti/p/@971xdxwx',
         ],
         'instagram' => [
-            'display' => '@uccolorrun',
-            'url' => 'https://instagram.com/uccolorrun',
+            'display' => '@uc.colorun',
+            'url' => 'https://www.instagram.com/uc.colorun/',
         ],
     ],
 

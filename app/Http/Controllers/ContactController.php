@@ -21,7 +21,7 @@ class ContactController extends Controller
         return view('pages.contact', [
             'channels' => [
                 ['label' => 'Email', 'value' => $contacts['email'], 'url' => 'mailto:'.$contacts['email'], 'icon' => 'mail', 'external' => false],
-                ['label' => 'WhatsApp', 'value' => $contacts['whatsapp']['display'], 'url' => $contacts['whatsapp']['url'], 'icon' => 'message-circle', 'external' => true],
+                ['label' => 'LINE', 'value' => $contacts['line']['display'], 'url' => $contacts['line']['url'], 'icon' => 'message-circle', 'external' => true],
                 ['label' => 'Instagram', 'value' => $contacts['instagram']['display'], 'url' => $contacts['instagram']['url'], 'icon' => 'instagram', 'external' => true],
                 ['label' => 'Lokasi', 'value' => $venue['name'], 'url' => $venue['maps_url'], 'icon' => 'map-pin', 'external' => true],
             ],

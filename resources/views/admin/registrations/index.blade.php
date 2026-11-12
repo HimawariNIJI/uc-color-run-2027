@@ -8,7 +8,7 @@
         </x-slot:actions>
 
         <form method="GET" action="{{ route('admin.registrations.index') }}" class="grid gap-3 min-[26rem]:grid-cols-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] xl:grid-cols-[minmax(0,1fr)_11rem_11rem_auto]" role="search" data-auto-submit>
-            <x-admin.search-input class="min-[26rem]:col-span-2 md:col-span-3 xl:col-span-1" :value="$filters->search" placeholder="Search name or email..." label="Cari nama, email, atau Registration ID" />
+            <x-admin.search-input class="min-[26rem]:col-span-2 md:col-span-3 xl:col-span-1" :value="$filters->search" placeholder="Search name, email or BIB..." label="Cari nama, email, Registration ID, atau nomor BIB" />
             <x-admin.filter-select name="status" :options="$statusOptions" :selected="$filters->status?->value" all-label="All Status" label="Filter status pembayaran" />
             <x-admin.filter-select name="category" :options="$categoryOptions" :selected="$filters->category?->value" all-label="All Categories" label="Filter kategori lomba" />
             <x-button :href="route('admin.registrations.index')" variant="secondary" pill class="min-h-11 min-[26rem]:col-span-2 md:col-span-1 md:w-32">Reset</x-button>

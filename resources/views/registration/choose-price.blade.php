@@ -21,6 +21,7 @@
                             : \App\Support\Rupiah::format($prices->min()).($prices->min() === $prices->max() ? '' : ' – '.\App\Support\Rupiah::format($prices->max()));
                         $status = match (true) {
                             $isSoldOut => 'Sold out',
+                            $packages->contains->isOpen() && $packages->every->hasUnlimitedQuota() => 'Kuota tidak terbatas',
                             $packages->contains->isOpen() => 'Kuota terbatas',
                             default => 'Belum dibuka',
                         };

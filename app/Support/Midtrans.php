@@ -12,6 +12,11 @@ use RuntimeException;
  */
 class Midtrans
 {
+    /**
+     * Exception code of status() when Midtrans has no transaction with that order ID.
+     */
+    public const UNKNOWN_ORDER = 404;
+
     public static function isConfigured(): bool
     {
         return filled(config('services.midtrans.server_key'));
@@ -53,7 +58,7 @@ class Midtrans
      *
      * @return array<string, mixed>
      *
-     * @throws RuntimeException when Midtrans does not know the order or cannot be reached
+     * @throws RuntimeException when Midtrans cannot be reached, or does not know the order (code UNKNOWN_ORDER)
      */
     public static function status(string $orderId): array
     {
@@ -64,7 +69,7 @@ class Midtrans
             throw new RuntimeException(sprintf(
                 'Midtrans status for %s is unavailable (HTTP %d, status %s: %s).',
                 $orderId, $response->status(), $body['status_code'] ?? '-', $body['status_message'] ?? 'no message',
-            ));
+            ), $response->status() === 404 || ($body['status_code'] ?? null) === '404' ? self::UNKNOWN_ORDER : 0);
         }
 
         return $body;

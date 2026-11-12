@@ -32,18 +32,6 @@ enum RaceCategory: string
     }
 
     /**
-     * First digit of every BIB number issued for this category.
-     */
-    public function bibPrefix(): string
-    {
-        return match ($this) {
-            self::ThreeK => '3',
-            self::FiveK => '5',
-            self::TenK => '1',
-        };
-    }
-
-    /**
      * Race details configured for this category.
      *
      * @return array{start_time: string, cut_off: string, tagline: string, route_image: ?string, photo: string}

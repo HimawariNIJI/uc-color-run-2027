@@ -39,7 +39,6 @@ class RegistrationController extends Controller
     {
         $registration->load(['bibCollector:id,name', 'members']);
 
-        // The racepack pickup QR is not built yet; the page shows a "coming soon" placeholder.
         return view('admin.registrations.show', [
             'registration' => $registration,
         ])->fragmentIf($request->hasHeader('X-Admin-Modal'), 'details');

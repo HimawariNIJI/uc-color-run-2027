@@ -9,7 +9,7 @@ it('renders every public page', function (string $routeName, string $expectedTex
         ->assertOk()
         ->assertSee($expectedText);
 })->with([
-    'home' => ['home', 'Siap Berlari dan Bermandikan Warna?'],
+    'home' => ['home', 'Siap Berlari, Berwarna, dan Berpesta Bersama?'],
     'about' => ['about', 'Apa itu UC Color Run?'],
     'faq' => ['faq', 'Frequently Asked Questions'],
     'privacy policy' => ['privacy', 'Privacy Policy'],
@@ -44,13 +44,45 @@ it('drops the Early Bid message once every Early Bid package is full', function 
         ->assertSee('Daftar sekarang dan amankan slotmu di garis start.');
 });
 
-it('marks the running timeline milestone as current', function () {
-    $this->travelTo('2027-01-05 10:00:00');
-
+it('shows the official event timeline and Race Day', function () {
     $this->get(route('home'))
         ->assertOk()
-        ->assertSeeInOrder(['Registration Period', 'Sedang berlangsung', 'Racepack Collection']);
+        ->assertSee('Minggu, 11 April 2027')
+        ->assertSeeInOrder([
+            '5 Desember 2026 – 28 Maret 2027', 'Registration Period',
+            '8–10 April 2027', 'Racepack Collection',
+            '11 April 2027', 'Race Day',
+        ]);
 });
+
+it('marks the running timeline milestone as current', function (string $now, ?string $current) {
+    $this->travelTo($now);
+
+    $response = $this->get(route('home'))->assertOk();
+
+    $current === null
+        ? $response->assertDontSee('Sedang berlangsung')
+        : $response->assertSeeInOrder([$current, 'Sedang berlangsung']);
+})->with([
+    'before registration opens' => ['2026-12-04 23:59:00', null],
+    'first day of registration' => ['2026-12-05 00:00:00', 'Registration Period'],
+    'last day of registration' => ['2027-03-28 23:59:00', 'Registration Period'],
+    'between registration and racepack collection' => ['2027-04-01 10:00:00', null],
+    'racepack collection' => ['2027-04-10 18:00:00', 'Racepack Collection'],
+    'race day' => ['2027-04-11 07:00:00', 'Race Day'],
+]);
+
+it('shows the official contact channels in the footer of every public page', function (string $routeName) {
+    $this->get(route($routeName))
+        ->assertOk()
+        ->assertSeeInOrder([
+            '<footer',
+            'href="mailto:uccolorrun@gmail.com"', 'uccolorrun@gmail.com',
+            'href="https://line.me/R/ti/p/@971xdxwx" target="_blank" rel="noopener noreferrer"', '@971xdxwx',
+            'href="https://www.instagram.com/uc.colorun/" target="_blank" rel="noopener noreferrer"', '@uc.colorun',
+        ], false)
+        ->assertDontSee(['wa.me', '812-3456-7890', 'uccolorrun@ciputra.ac.id'], false);
+})->with(['home', 'about', 'faq', 'contact']);
 
 it('shows the sign in button to guests and the account menu to participants', function () {
     $this->get(route('home'))

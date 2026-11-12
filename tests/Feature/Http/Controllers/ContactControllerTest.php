@@ -30,6 +30,19 @@ function contactPayload(array $overrides = []): array
     ];
 }
 
+it('links the official email, LINE and Instagram channels and keeps the location unchanged', function () {
+    $this->get(route('contact'))
+        ->assertOk()
+        ->assertSeeInOrder([
+            'More Ways to Connect',
+            'href="mailto:uccolorrun@gmail.com"', 'Email', 'uccolorrun@gmail.com',
+            'href="https://line.me/R/ti/p/@971xdxwx"', 'target="_blank" rel="noopener noreferrer"', 'LINE', '@971xdxwx',
+            'href="https://www.instagram.com/uc.colorun/"', 'target="_blank" rel="noopener noreferrer"', 'Instagram', '@uc.colorun',
+            'href="https://maps.google.com/?q=Universitas+Ciputra+Surabaya"', 'target="_blank" rel="noopener noreferrer"', 'Lokasi', 'Universitas Ciputra Surabaya',
+        ], false)
+        ->assertDontSee(['WhatsApp', 'wa.me', 'uccolorrun@ciputra.ac.id', 'instagram.com/uccolorrun'], false);
+});
+
 it('asks guests to sign in with Google instead of showing the form', function () {
     $this->get(route('contact'))
         ->assertOk()

@@ -51,7 +51,7 @@
                     <li>
                         <a
                             href="{{ $channel['url'] }}"
-                            @if ($channel['external']) target="_blank" rel="noopener" @endif
+                            @if ($channel['external']) target="_blank" rel="noopener noreferrer" @endif
                             class="group flex flex-col items-center gap-3 rounded-2xl p-2 text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                         >
                             <span class="grid size-16 place-items-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-white md:size-20">

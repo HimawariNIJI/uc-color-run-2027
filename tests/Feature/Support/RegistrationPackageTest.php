@@ -17,8 +17,8 @@ it('stores exactly the 14 official packages, each at the temporary Rp100.000 per
         ['3K Early Bid', 'External', 50, 1, 'per_person', 100000],
         ['3K Normal Bid', 'Internal', 75, 1, 'per_person', 100000],
         ['3K Normal Bid', 'External', null, 1, 'per_person', 100000],
-        ['3K Family Bundle', 'Maks. 4 peserta', 20, 4, 'per_package', 100000],
-        ['5K Couple Bundle', 'Maks. 2 peserta', 50, 2, 'per_package', 100000],
+        ['3K Family Bundle', '4 peserta', 20, 4, 'per_package', 100000],
+        ['5K Couple Bundle', '2 peserta', 50, 2, 'per_package', 100000],
         ['5K Early Bid', 'Internal', 100, 1, 'per_person', 100000],
         ['5K Early Bid', 'External', 100, 1, 'per_person', 100000],
         ['5K Normal Bid', 'Internal', 150, 1, 'per_person', 100000],
@@ -45,14 +45,34 @@ it('never duplicates packages when the seeder runs again, and switches off outda
         ->and(TicketPrice::catalogue()->pluck('id'))->not->toContain($outdated->id);
 });
 
-it('never treats a missing quota as zero or as unlimited', function () {
-    $package = TicketPrice::findOption(RegistrationType::External, FeePeriod::Regular, RaceCategory::ThreeK);
+it('gives exactly the three Normal External packages an unlimited quota, stored as NULL', function () {
+    $unlimited = TicketPrice::catalogue()->filter->hasUnlimitedQuota();
 
-    expect($package->price)->toBe(100000)
-        ->and($package->remaining())->toBeNull()
-        ->and($package->isSoldOut())->toBeFalse()
+    expect($unlimited->map->bibPrefix()->values()->all())->toBe(['034', '054', '104'])
+        ->and($unlimited->pluck('quota')->unique()->all())->toBe([null]);
+});
+
+it('treats a NULL quota as unlimited: always open, never sold out, never zero', function () {
+    $package = TicketPrice::findOption(RegistrationType::External, FeePeriod::Regular, RaceCategory::ThreeK);
+    Registration::factory()->count(5)->paid()->normalPrice()->create(['type' => 'external', 'category' => '3k']);
+
+    expect($package->fresh()->quota)->toBeNull()
+        ->and($package->fresh()->takenSlots())->toBe(5)
+        ->and($package->fresh()->remaining())->toBeNull()
+        ->and($package->fresh()->isSoldOut())->toBeFalse()
+        ->and($package->fresh()->isOpen())->toBeTrue()
+        ->and($package->fresh()->unavailableMessage())->toBeNull()
+        ->and($package->fresh()->quotaLabel())->toBe('Kuota tidak terbatas');
+});
+
+it('treats a quota of 0 as no slots, not as unlimited', function () {
+    setPackage('internal', 'normal', '5k', ['quota' => 0]);
+    $package = TicketPrice::findOption(RegistrationType::Internal, FeePeriod::Regular, RaceCategory::FiveK);
+
+    expect($package->hasUnlimitedQuota())->toBeFalse()
+        ->and($package->isSoldOut())->toBeTrue()
         ->and($package->isOpen())->toBeFalse()
-        ->and($package->quotaLabel())->toBe('Kuota belum diumumkan');
+        ->and($package->quotaLabel())->toBe('Sold out');
 });
 
 it('keeps a package without a price closed and shows Price To Be Announced', function () {

@@ -10,7 +10,7 @@ it('maps every Midtrans transaction status to a payment status', function (strin
     'card captured but challenged' => ['capture', 'challenge', TransactionStatus::Pending],
     'waiting for payment' => ['pending', null, TransactionStatus::Pending],
     'QRIS expired' => ['expire', null, TransactionStatus::Expired],
-    'cancelled' => ['cancel', null, TransactionStatus::Failed],
+    'cancelled' => ['cancel', null, TransactionStatus::Cancelled],
     'denied' => ['deny', null, TransactionStatus::Failed],
     'failed' => ['failure', null, TransactionStatus::Failed],
     'unknown status' => ['something-new', null, TransactionStatus::Failed],

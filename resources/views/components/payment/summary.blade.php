@@ -12,7 +12,7 @@
     <p class="text-caption font-semibold uppercase tracking-wider text-muted">{{ $title }}</p>
 
     <dl class="mt-3 flex flex-col gap-2.5">
-        <x-detail-row label="Nama peserta">{{ $registration->full_name }}</x-detail-row>
+        <x-detail-row label="Full Nama (Nama Pembayar)">{{ $registration->full_name }}</x-detail-row>
         <x-detail-row label="Kategori race">{{ $registration->raceLabel() }}</x-detail-row>
         <x-detail-row label="Ukuran T-shirt">{{ $registration->tshirt_size->label() }}</x-detail-row>
     </dl>

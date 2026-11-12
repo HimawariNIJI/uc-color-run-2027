@@ -2,128 +2,202 @@
 
 namespace App\Support;
 
+use App\Exceptions\BibNumbersExhausted;
+use App\Models\BibSequence;
 use App\Models\Registration;
-use App\Models\RegistrationMember;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
+use LogicException;
 
 /**
- * BIB numbers and registration codes for UC Color Run 2027. This is the only place the codes
- * are defined.
+ * BIB numbers, participant IDs and registration codes for UC Color Run 2027. This is the only place
+ * they are defined.
  *
- * A BIB has 10 digits: race category (2), price type (2), participant type (2), sequence (4).
- * Example: 10K, Early Bid, External, 19th number = 10 01 02 0019 = "1001020019",
- * with registration code "UCCR-1001020019". BIBs are text so the leading zero of 3K and 5K stays.
- * Bundles have no Early Bid / Normal Bid, so their price type digits are "00"
- * (5K Couple Bundle: 05 00 03 0001).
+ * A BIB has exactly 7 digits: the package's official 3-digit prefix and a 4-digit sequence that
+ * starts at 0001, for example "0310001" for the first paid 3K Early Bird Internal participant. BIBs
+ * are text so the leading zero stays. Every prefix has its own sequence, and every participant gets
+ * their own number: a Couple Bundle uses 2 numbers, a Family Bundle 4.
  *
- * Numbers are handed out in two steps:
- *  1. Registering reserves the next number for the package in the registration code.
- *     No BIB is issued yet.
- *  2. Once the payment is confirmed, the account holder receives the reserved number as their
- *     BIB and bundle members receive the next free numbers of the same package.
+ * BIBs follow the order in which payments are confirmed, not the order of registering: numbers are
+ * only drawn once the backend has verified the Midtrans settlement (Registration::markAsPaid), and a
+ * bundle draws all of its numbers at once, so they are consecutive. A number is never reused, and a
+ * registration that is never paid uses none.
  *
- * The next number is the highest sequence already used for the prefix, in registration codes and
- * BIBs, plus one. Callers hold the package's row lock (TicketPrice::lockForRegistration), and the
- * unique indexes on the code and BIB columns are the final guard. Numbers are never reused, so
- * registrations that are never paid leave gaps. The database ID is never used.
+ * Once issued, a participant's ID is "UCCR-{BIB}" (racepack QR, Participants sheet).
+ *
+ * The registration code is given when registering and never changes, so it cannot contain the BIB:
+ * "UCCR-", the package prefix and the package's own registration sequence, for example
+ * "UCCR-052-0001" for the first 5K Early Bird External registration. Midtrans order IDs are built
+ * from it. Registrations made before BIBs followed the payment order keep their older code
+ * ("UCCR-0520001" or "UCR-2027-ABCDE"). The database ID is never used.
  */
 final class BibNumber
 {
-    public const LENGTH = 10;
+    public const LENGTH = 7;
 
     public const SEQUENCE_DIGITS = 4;
 
+    public const MAX_SEQUENCE = 9999;
+
+    /**
+     * The start of every participant ID and registration code.
+     */
     public const REGISTRATION_CODE_PREFIX = 'UCCR-';
 
     /**
-     * Race category code: the distance in kilometres.
+     * The official prefixes. Keys are "race category:price type:participant type" for individual
+     * packages and "race category:bundle type" for bundles. These are final: never change them.
      *
      * @var array<string, string>
      */
-    public const RACE_CATEGORY_CODES = ['3k' => '03', '5k' => '05', '10k' => '10'];
-
-    /**
-     * Early Bid and Normal Bid; bundles (no price type) use NO_PRICE_TYPE_CODE.
-     *
-     * @var array<string, string>
-     */
-    public const PRICE_TYPE_CODES = ['early_bird' => '01', 'normal' => '02'];
-
-    public const NO_PRICE_TYPE_CODE = '00';
-
-    /**
-     * Keyed by registration type, with the bundle type added for bundling.
-     *
-     * @var array<string, string>
-     */
-    public const PARTICIPANT_TYPE_CODES = [
-        'internal' => '01',
-        'external' => '02',
-        'bundling:couple' => '03',
-        'bundling:family' => '04',
+    public const PREFIXES = [
+        '3k:early_bird:internal' => '031',
+        '3k:early_bird:external' => '032',
+        '3k:normal:internal' => '033',
+        '3k:normal:external' => '034',
+        '3k:family' => '035',
+        '5k:early_bird:internal' => '051',
+        '5k:early_bird:external' => '052',
+        '5k:normal:internal' => '053',
+        '5k:normal:external' => '054',
+        '5k:couple' => '055',
+        '10k:early_bird:internal' => '101',
+        '10k:early_bird:external' => '102',
+        '10k:normal:internal' => '103',
+        '10k:normal:external' => '104',
     ];
 
     /**
-     * The first six digits, shared by every BIB of the same race category, price type and participant type.
+     * The official prefix of a package.
+     *
+     * @throws InvalidArgumentException for a combination that is not an official package
      */
     public static function prefix(string $raceCategory, ?string $priceType, string $registrationType, ?string $bundleType = null): string
     {
-        $participantType = $registrationType === 'bundling' ? "bundling:{$bundleType}" : $registrationType;
+        $key = $bundleType !== null ? "{$raceCategory}:{$bundleType}" : "{$raceCategory}:{$priceType}:{$registrationType}";
 
-        return self::code(self::RACE_CATEGORY_CODES, $raceCategory, 'race category')
-            .($priceType === null ? self::NO_PRICE_TYPE_CODE : self::code(self::PRICE_TYPE_CODES, $priceType, 'price type'))
-            .self::code(self::PARTICIPANT_TYPE_CODES, $participantType, 'participant type');
+        return self::PREFIXES[$key] ?? throw new InvalidArgumentException("There is no official BIB prefix for \"{$key}\".");
     }
 
     public static function make(string $prefix, int $sequence): string
     {
-        $highestSequence = 10 ** self::SEQUENCE_DIGITS - 1;
+        if (! in_array($prefix, self::PREFIXES, true)) {
+            throw new InvalidArgumentException("\"{$prefix}\" is not an official BIB prefix.");
+        }
 
-        if ($sequence < 1 || $sequence > $highestSequence) {
-            throw new InvalidArgumentException("BIB sequence must be between 1 and {$highestSequence}, got {$sequence}.");
+        if ($sequence < 1 || $sequence > self::MAX_SEQUENCE) {
+            throw new InvalidArgumentException('BIB sequence must be between 1 and '.self::MAX_SEQUENCE.", got {$sequence}.");
         }
 
         return $prefix.str_pad((string) $sequence, self::SEQUENCE_DIGITS, '0', STR_PAD_LEFT);
     }
 
     /**
-     * The next unused number for the prefix. Numbers have a fixed width, so the highest string is
-     * also the highest sequence. Call it while holding the package's row lock.
+     * Draw $count consecutive numbers of the prefix and return them in order. Only called when a
+     * verified payment issues BIBs (Registration::markAsPaid).
+     *
+     * Call it inside the database transaction that stores the numbers. The UPDATE locks the
+     * prefix's sequence row before anything is read, so a simultaneous confirmation of the same
+     * package waits until this transaction ends and then continues after these numbers. If the
+     * transaction is rolled back, the sequence goes back with it. Either way no number is handed
+     * out twice; the unique indexes on the BIB columns are the last guard.
+     *
+     * @return list<string>
+     *
+     * @throws BibNumbersExhausted when fewer than $count numbers are left before 9999
      */
-    public static function next(string $prefix): string
+    public static function reserve(string $prefix, int $count = 1): array
     {
-        $highest = collect([
-            Registration::query()->where('code', 'like', self::REGISTRATION_CODE_PREFIX.$prefix.'%')->max('code'),
-            Registration::query()->where('bib_number', 'like', $prefix.'%')->max('bib_number'),
-            RegistrationMember::query()->where('bib_number', 'like', $prefix.'%')->max('bib_number'),
-        ])
-            ->filter()
-            ->map(fn (string $number): int => (int) substr($number, -self::SEQUENCE_DIGITS))
-            ->max() ?? 0;
+        if ($count < 1) {
+            throw new InvalidArgumentException("Reserve at least one BIB number, not {$count}.");
+        }
 
-        return self::make($prefix, $highest + 1);
+        self::ensureTransaction('Reserve BIB numbers inside the database transaction that stores them.');
+
+        $reserved = BibSequence::query()
+            ->whereKey($prefix)
+            ->where('last_sequence', '<=', self::MAX_SEQUENCE - $count)
+            ->increment('last_sequence', $count);
+
+        if ($reserved === 0) {
+            throw BibSequence::query()->whereKey($prefix)->exists()
+                ? new BibNumbersExhausted($prefix, $count)
+                : new InvalidArgumentException("There is no BIB sequence for prefix \"{$prefix}\".");
+        }
+
+        $last = (int) BibSequence::query()->whereKey($prefix)->value('last_sequence');
+
+        return array_map(
+            fn (int $sequence): string => self::make($prefix, $sequence),
+            range($last - $count + 1, $last),
+        );
     }
 
-    public static function registrationCode(string $bibNumber): string
+    /**
+     * Make sure the prefix still has $count numbers left, so a registration is refused up front
+     * when its participants could never get a BIB. Nothing is reserved.
+     *
+     * @throws BibNumbersExhausted
+     */
+    public static function ensureAvailable(string $prefix, int $count): void
+    {
+        $last = BibSequence::query()->whereKey($prefix)->value('last_sequence')
+            ?? throw new InvalidArgumentException("There is no BIB sequence for prefix \"{$prefix}\".");
+
+        if ((int) $last > self::MAX_SEQUENCE - $count) {
+            throw new BibNumbersExhausted($prefix, $count);
+        }
+    }
+
+    /**
+     * The next registration code of a package, for example "UCCR-052-0001".
+     *
+     * Call it inside the transaction that stores the registration, after locking the package row
+     * (TicketPrice::lockForRegistration). Every registration of a package takes that lock first and
+     * only the package's one active row is ever registered for, so a package's registrations get
+     * their codes one at a time and never the same one; the unique index on the code is the last guard.
+     *
+     * @throws BibNumbersExhausted after 9999 registrations of the prefix
+     */
+    public static function nextRegistrationCode(string $prefix): string
+    {
+        self::ensureTransaction('Make registration codes inside the database transaction that stores the registration.');
+
+        if (! in_array($prefix, self::PREFIXES, true)) {
+            throw new InvalidArgumentException("\"{$prefix}\" is not an official BIB prefix.");
+        }
+
+        $start = self::REGISTRATION_CODE_PREFIX.$prefix.'-';
+        $last = Registration::query()->where('code', 'like', $start.'%')->max('code');
+        $sequence = $last === null ? 1 : (int) substr($last, strlen($start)) + 1;
+
+        if ($sequence > self::MAX_SEQUENCE) {
+            throw new BibNumbersExhausted($prefix);
+        }
+
+        return $start.str_pad((string) $sequence, self::SEQUENCE_DIGITS, '0', STR_PAD_LEFT);
+    }
+
+    public static function isValid(?string $bibNumber): bool
+    {
+        return $bibNumber !== null
+            && preg_match('/^\d{'.self::LENGTH.'}$/', $bibNumber) === 1
+            && in_array(substr($bibNumber, 0, 3), self::PREFIXES, true)
+            && (int) substr($bibNumber, -self::SEQUENCE_DIGITS) >= 1;
+    }
+
+    /**
+     * A participant's ID once their BIB is issued: "UCCR-{BIB}".
+     */
+    public static function participantId(string $bibNumber): string
     {
         return self::REGISTRATION_CODE_PREFIX.$bibNumber;
     }
 
-    /**
-     * The number reserved in a registration code, or null for a code in another format.
-     */
-    public static function fromRegistrationCode(string $code): ?string
+    private static function ensureTransaction(string $message): void
     {
-        $number = substr($code, strlen(self::REGISTRATION_CODE_PREFIX));
-
-        return str_starts_with($code, self::REGISTRATION_CODE_PREFIX) && strlen($number) === self::LENGTH ? $number : null;
-    }
-
-    /**
-     * @param  array<string, string>  $codes
-     */
-    private static function code(array $codes, string $value, string $name): string
-    {
-        return $codes[$value] ?? throw new InvalidArgumentException("Unknown {$name} \"{$value}\" for a BIB number.");
+        if (DB::transactionLevel() === 0) {
+            throw new LogicException($message);
+        }
     }
 }

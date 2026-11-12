@@ -1,6 +1,8 @@
 /**
- * Racepack collection scanner: reads participants' QR codes with the device camera and
- * records the BIB collection on the server. Also handles the typed registration ID form.
+ * Racepack collection scanner: reads participants' racepack QR codes with the device camera and
+ * sends them to the server, which checks them and records the scan. A valid scan's details open
+ * in the admin modal; while it is open no other code is read, and a code still in view when it
+ * closes is not sent again. Also handles the typed registration ID form.
  *
  * Uses the browser's BarcodeDetector where available (Chrome on Android and macOS) and the
  * jsQR library everywhere else (Windows, Firefox, iPhone), loaded only when needed.
@@ -74,6 +76,7 @@ export function initQrScanner(root) {
     const result = scanner.querySelector('[data-scanner-result]');
     const manualForm = scanner.querySelector('[data-scanner-manual]');
     const recentRows = document.getElementById('recent-scans');
+    const resultDialog = document.querySelector('[data-admin-modal]');
     const canvas = document.createElement('canvas');
 
     let decode = null;
@@ -133,6 +136,10 @@ export function initQrScanner(root) {
 
             showResult(data.tone ?? 'error', data.message ?? 'Terjadi kesalahan. Silakan coba lagi.');
 
+            if (data.modal) {
+                document.dispatchEvent(new CustomEvent('admin-modal:show', { detail: { html: data.modal } }));
+            }
+
             if (data.row) {
                 addRecentRow(data.row);
 
@@ -141,7 +148,7 @@ export function initQrScanner(root) {
                 }
             }
 
-            return data.tone === 'success';
+            return Boolean(data.modal);
         } catch {
             showResult('error', 'Tidak dapat terhubung ke server. Periksa koneksi internet lalu coba lagi.');
 
@@ -157,7 +164,9 @@ export function initQrScanner(root) {
             return;
         }
 
-        if (!busy && Date.now() >= pausedUntil && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        const isShowingResult = resultDialog?.open ?? false;
+
+        if (!busy && !isShowingResult && Date.now() >= pausedUntil && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
             try {
                 const payload = await decode(video);
 
@@ -180,6 +189,15 @@ export function initQrScanner(root) {
         timer = window.setTimeout(scanFrame, SCAN_INTERVAL_MS);
     };
 
+    // A camera facing the admin (a laptop webcam or a phone's front camera) is shown mirrored, like
+    // a mirror, so a QR code moved to the left also moves left on screen. A phone's back camera is
+    // shown as it is. Only the preview is flipped: the decoder still reads the camera's own image.
+    const mirrorPreviewFor = (cameraStream) => {
+        const { facingMode } = cameraStream.getVideoTracks()[0]?.getSettings?.() ?? {};
+
+        video.style.transform = facingMode === 'environment' ? '' : 'scaleX(-1)';
+    };
+
     const start = async () => {
         if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
             showResult('error', 'Kamera hanya dapat digunakan melalui koneksi aman (HTTPS). Gunakan input Registration ID di bawah.');
@@ -195,6 +213,7 @@ export function initQrScanner(root) {
                 video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
                 audio: false,
             });
+            mirrorPreviewFor(stream);
             video.srcObject = stream;
             await video.play();
             result.replaceChildren();
@@ -211,11 +230,19 @@ export function initQrScanner(root) {
         stream?.getTracks().forEach((track) => track.stop());
         stream = null;
         video.srcObject = null;
+        video.style.transform = '';
         setState('idle');
     }
 
     startButton.addEventListener('click', start);
     stopButton.addEventListener('click', stop);
+
+    // Ready for the next participant once the result is closed; the code just processed only
+    // counts again after it has been out of view for a moment.
+    resultDialog?.addEventListener('close', () => {
+        lastPayloadSeenAt = Date.now();
+        pausedUntil = Date.now() + PAUSE_AFTER_SCAN_MS;
+    });
 
     // Release the camera when the tab is hidden or the page is left.
     document.addEventListener('visibilitychange', () => {

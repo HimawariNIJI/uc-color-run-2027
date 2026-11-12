@@ -23,6 +23,12 @@
             @endforeach
         </x-payment.summary>
 
+        <div class="flex flex-col items-center rounded-2xl border border-border px-5 py-6 text-center">
+            <p class="text-caption font-semibold uppercase tracking-wider text-muted">QR Racepack</p>
+            <x-racepack-qr :registration="$registration" size="size-44" class="mt-3" />
+            <p class="mt-3 max-w-xs text-caption text-muted">Tunjukkan QR ini kepada panitia saat pengambilan race pack. QR yang sama juga ada di halaman My BIB.</p>
+        </div>
+
         <div class="rounded-2xl border border-border px-5 py-6">
             <x-state-message icon="badge-check" title="Registrasi Terkonfirmasi" tone="success">
                 Terima kasih telah mendaftar UC Color Run. Sampai jumpa di garis start!

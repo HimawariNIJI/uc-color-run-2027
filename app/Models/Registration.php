@@ -4,15 +4,19 @@ namespace App\Models;
 
 use App\Enums\FeePeriod;
 use App\Enums\Gender;
+use App\Enums\IdentityDocument;
 use App\Enums\PaymentStatus;
 use App\Enums\RaceCategory;
 use App\Enums\RegistrationType;
 use App\Enums\TransactionStatus;
 use App\Enums\TshirtSize;
+use App\Exceptions\BibNumbersExhausted;
+use App\Observers\ParticipantsSheetObserver;
 use App\Support\BibNumber;
 use App\Support\Midtrans;
 use Database\Factories\RegistrationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -22,8 +26,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 use Throwable;
 
+#[ObservedBy([ParticipantsSheetObserver::class])]
 #[Fillable([
     'ticket_price_id',
     'code',
@@ -35,9 +41,13 @@ use Throwable;
     'birth_date',
     'gender',
     'identity_number',
+    'ktp_photo_path',
+    'family_card_photo_path',
     'tshirt_size',
     'emergency_contact_name',
     'emergency_contact_phone',
+    'medical_history',
+    'drug_allergies',
     'province',
     'city',
     'address',
@@ -53,11 +63,6 @@ class Registration extends Model
      * Characters used for registration codes (no look-alike characters).
      */
     private const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-
-    /**
-     * First segment of the racepack collection QR code.
-     */
-    private const RACEPACK_PAYLOAD_PREFIX = 'UCR2027';
 
     protected static function booted(): void
     {
@@ -81,6 +86,8 @@ class Registration extends Model
             'fee_period' => FeePeriod::class,
             'payment_status' => PaymentStatus::class,
             'identity_number' => 'encrypted',
+            'medical_history' => 'encrypted',
+            'drug_allergies' => 'encrypted',
             'birth_date' => 'date',
             'amount' => 'integer',
             'payment_expires_at' => 'datetime',
@@ -144,7 +151,17 @@ class Registration extends Model
     }
 
     /**
-     * Search by participant name, email or registration ID.
+     * Racepack desk scans of this registration's QR, accepted and rejected.
+     *
+     * @return HasMany<QrScan, $this>
+     */
+    public function qrScans(): HasMany
+    {
+        return $this->hasMany(QrScan::class);
+    }
+
+    /**
+     * Search by payer name, email, registration ID, or the BIB of any participant (payer or bundle member).
      */
     #[Scope]
     protected function search(Builder $query, ?string $term): void
@@ -156,7 +173,9 @@ class Registration extends Model
         $query->where(fn (Builder $query) => $query
             ->whereLike('full_name', "%{$term}%")
             ->orWhereLike('email', "%{$term}%")
-            ->orWhereLike('code', "%{$term}%"));
+            ->orWhereLike('code', "%{$term}%")
+            ->orWhereLike('bib_number', "%{$term}%")
+            ->orWhereHas('members', fn (Builder $members) => $members->whereLike('bib_number', "%{$term}%")));
     }
 
     #[Scope]
@@ -202,6 +221,27 @@ class Registration extends Model
     public function isPaid(): bool
     {
         return $this->payment_status === PaymentStatus::Paid;
+    }
+
+    /**
+     * The payer's KTP, or the family's Kartu Keluarga for a Family Bundle.
+     */
+    public function identityDocument(): IdentityDocument
+    {
+        return IdentityDocument::forPackage($this->package());
+    }
+
+    public function identityPhotoPath(): ?string
+    {
+        return $this->getAttribute($this->identityDocument()->column());
+    }
+
+    /**
+     * Registrations made before the photo field existed have none.
+     */
+    public function hasIdentityPhoto(): bool
+    {
+        return filled($this->identityPhotoPath());
     }
 
     /**
@@ -253,6 +293,58 @@ class Registration extends Model
     }
 
     /**
+     * Unpaid and still inside its payment window, so it holds a slot of the package (see holdingSlot()).
+     */
+    public function isAwaitingPayment(): bool
+    {
+        return $this->payment_status === PaymentStatus::Unpaid && ! $this->paymentHasExpired();
+    }
+
+    /**
+     * Where the payment stands, from the states the backend has verified with Midtrans:
+     * "Settlement", "Pending", "Expired", "Cancelled" or "Failed". A settlement is final.
+     */
+    public function paymentStage(): string
+    {
+        if ($this->isPaid()) {
+            return 'Settlement';
+        }
+
+        if ($this->isAwaitingPayment()) {
+            return 'Pending';
+        }
+
+        return match ($this->latestPayment?->status) {
+            TransactionStatus::Cancelled => 'Cancelled',
+            TransactionStatus::Expired => 'Expired',
+            TransactionStatus::Failed => 'Failed',
+            default => $this->payment_status === PaymentStatus::Unpaid ? 'Expired' : 'Failed',
+        };
+    }
+
+    /**
+     * The payment status on My Registration: Paid, Unpaid (waiting for the payment), Expired,
+     * Cancelled or Failed.
+     */
+    public function paymentStatusLabel(): string
+    {
+        return match ($stage = $this->paymentStage()) {
+            'Settlement' => PaymentStatus::Paid->label(),
+            'Pending' => PaymentStatus::Unpaid->label(),
+            default => $stage,
+        };
+    }
+
+    public function paymentStatusTone(): string
+    {
+        return match ($this->paymentStage()) {
+            'Settlement' => 'success',
+            'Pending' => 'warning',
+            default => 'error',
+        };
+    }
+
+    /**
      * Start a fresh QRIS payment window.
      */
     public function openPaymentWindow(): void
@@ -264,70 +356,125 @@ class Registration extends Model
     }
 
     /**
-     * Confirm the payment and issue the participant's BIB number.
+     * Confirm the payment and issue every participant's BIB. Only a verified Midtrans settlement
+     * (or the local payment simulation) calls this, so BIBs follow the order in which payments are
+     * confirmed, not the order of registering.
      *
-     * Pass the payment gateway's reference once a gateway is integrated; until then the
-     * transaction ID is derived from the registration ID.
+     * One transaction locks the package row, then this registration's row, and then draws the BIBs
+     * from the package's sequence (see BibNumber::reserve). A second confirmation of the same
+     * registration, such as a repeated or simultaneous notification or a late settlement of an
+     * older attempt, waits for those locks, sees the payment and changes nothing. A participant
+     * therefore never gets a second BIB, and once issued a BIB never changes.
+     *
+     * Pass the verified payment attempt: its order ID becomes the transaction ID and its Midtrans
+     * settlement time the payment date.
      */
-    public function markAsPaid(?string $transactionId = null): void
+    public function markAsPaid(?Payment $payment = null): void
     {
         $package = $this->package();
 
-        DB::transaction(function () use ($package, $transactionId): void {
-            // The package lock keeps two confirmations from handing out the same BIB number.
+        DB::transaction(function () use ($package, $payment): void {
             $package = $package?->lockForRegistration();
-            $this->refresh();
+            $registration = static::query()->lockForUpdate()->findOrFail($this->getKey());
 
-            if ($this->isPaid()) {
+            if ($registration->isPaid()) {
+                if ($payment !== null && $registration->transaction_id !== $payment->order_id) {
+                    report(new RuntimeException("Registration {$registration->code} was already paid, and Midtrans settled order {$payment->order_id} as well."));
+                }
+
                 return;
             }
 
-            $this->forceFill([
+            $registration->forceFill([
                 'payment_status' => PaymentStatus::Paid,
-                'paid_at' => now(),
+                'paid_at' => $payment?->paid_at ?? now(),
                 'payment_expires_at' => null,
-                'transaction_id' => $transactionId ?? $this->transaction_id ?? 'PAY-'.$this->code,
-                'bib_number' => $this->bib_number ?? $this->firstBibNumber($package),
+                'transaction_id' => $payment?->order_id ?? $registration->transaction_id ?? 'PAY-'.$registration->code,
             ])->save();
 
-            foreach ($this->members()->whereNull('bib_number')->get() as $member) {
-                $member->forceFill(['bib_number' => BibNumber::next($package->bibPrefix())])->save();
-            }
+            $registration->issueBibNumbers($package);
         });
+
+        $this->refresh();
     }
 
     /**
-     * The account holder gets the number reserved in their registration code. If the registration
-     * moved to another package after reserving it (Early Bid full, Normal Bid instead), they get the
-     * next number of their current package so the BIB still describes what they paid for.
+     * Draw the next numbers of the paid package for every participant without a BIB, the payer
+     * first and then bundle members by position. A bundle draws them all at once, so they are
+     * consecutive. Runs inside markAsPaid's transaction, after the payment was recorded.
+     *
+     * The payment stays confirmed when no BIB can be issued (the package is no longer official or
+     * its numbers ran out); the problem is reported so the committee can step in.
      */
-    private function firstBibNumber(?TicketPrice $package): string
+    private function issueBibNumbers(?TicketPrice $package): void
     {
-        $reserved = BibNumber::fromRegistrationCode($this->code);
+        $members = $this->members()->whereNull('bib_number')->get();
+        $count = ($this->bib_number === null ? 1 : 0) + $members->count();
 
-        if ($package === null) {
-            return $reserved ?? $this->category->bibPrefix().str_pad((string) $this->id, 4, '0', STR_PAD_LEFT);
+        if ($count === 0) {
+            return;
         }
 
-        return $reserved !== null && str_starts_with($reserved, $package->bibPrefix())
-            ? $reserved
-            : BibNumber::next($package->bibPrefix());
+        if ($package === null) {
+            report(new RuntimeException("Registration {$this->code} was paid but has no official package, so no BIB was issued."));
+
+            return;
+        }
+
+        try {
+            $numbers = BibNumber::reserve($package->bibPrefix(), $count);
+        } catch (BibNumbersExhausted $exception) {
+            report($exception);
+
+            return;
+        }
+
+        if ($this->bib_number === null) {
+            $this->forceFill(['bib_number' => array_shift($numbers)])->save();
+        }
+
+        foreach ($members as $member) {
+            $member->forceFill(['bib_number' => array_shift($numbers)])->save();
+        }
     }
 
     /**
-     * Create the Midtrans QRIS for the registration's amount and keep it as the latest payment
-     * attempt. If Midtrans refuses, the attempt and the registration are marked failed (which gives
-     * the slot back) and the exception is rethrown for the caller to report.
+     * Record a new pending payment attempt for the registration's amount and payment window, with
+     * its own Midtrans order ID: the registration code and the attempt number, for example
+     * "UCCR-052-0001-2". Earlier attempts are kept unchanged as payment history, and an order ID
+     * Midtrans has seen is never used again.
      */
-    public function startQrisPayment(): Payment
+    public function newPaymentAttempt(): Payment
     {
-        $payment = $this->payments()->create([
-            'order_id' => $this->code.'-'.($this->payments()->count() + 1),
+        $attempt = $this->payments()->count();
+
+        do {
+            $orderId = $this->code.'-'.++$attempt;
+        } while (Payment::query()->where('order_id', $orderId)->exists());
+
+        return $this->payments()->create([
+            'order_id' => $orderId,
             'amount' => $this->amount,
             'status' => TransactionStatus::Pending,
             'expires_at' => $this->payment_expires_at,
         ]);
+    }
 
+    /**
+     * Create the Midtrans QRIS for the registration's amount as a new payment attempt.
+     */
+    public function startQrisPayment(): Payment
+    {
+        return $this->chargeQris($this->newPaymentAttempt());
+    }
+
+    /**
+     * Ask Midtrans to create the QRIS of a pending attempt and keep it as the current payment. If
+     * Midtrans refuses, the attempt and the registration are marked failed (which gives the slot
+     * back) and the exception is rethrown for the caller to report.
+     */
+    public function chargeQris(Payment $payment): Payment
+    {
         try {
             $charge = Midtrans::chargeQris(
                 orderId: $payment->order_id,
@@ -354,11 +501,22 @@ class Registration extends Model
             'expires_at' => $expiresAt,
         ]);
 
-        $this->forceFill([
-            'payment_status' => PaymentStatus::Unpaid,
-            'payment_expires_at' => $expiresAt,
-            'transaction_id' => $payment->order_id,
-        ])->save();
+        // A payment confirmed meanwhile (an older attempt settling) is final and stays as it is.
+        DB::transaction(function () use ($payment, $expiresAt): void {
+            $registration = static::query()->lockForUpdate()->findOrFail($this->getKey());
+
+            if ($registration->isPaid()) {
+                return;
+            }
+
+            $registration->forceFill([
+                'payment_status' => PaymentStatus::Unpaid,
+                'payment_expires_at' => $expiresAt,
+                'transaction_id' => $payment->order_id,
+            ])->save();
+        });
+
+        $this->refresh();
 
         return $payment;
     }
@@ -392,12 +550,26 @@ class Registration extends Model
         return true;
     }
 
+    /**
+     * Mark the payment as failed, which gives the slot back. A confirmed payment is final: a paid
+     * registration is never changed, even when a failure is reported at the same moment.
+     */
     public function markAsFailed(): void
     {
-        $this->forceFill([
-            'payment_status' => PaymentStatus::Failed,
-            'payment_expires_at' => null,
-        ])->save();
+        DB::transaction(function (): void {
+            $registration = static::query()->lockForUpdate()->findOrFail($this->getKey());
+
+            if ($registration->isPaid()) {
+                return;
+            }
+
+            $registration->forceFill([
+                'payment_status' => PaymentStatus::Failed,
+                'payment_expires_at' => null,
+            ])->save();
+        });
+
+        $this->refresh();
     }
 
     /**
@@ -411,27 +583,14 @@ class Registration extends Model
     }
 
     /**
-     * Payload encoded in the racepack collection QR code.
-     */
-    public function racepackPayload(): string
-    {
-        return implode('|', [self::RACEPACK_PAYLOAD_PREFIX, $this->code, $this->bib_number]);
-    }
-
-    /**
-     * Read a scanned racepack QR code. Returns null when it is not one of ours.
+     * Every participant's BIB, the payer first and then bundle members by position (null where no
+     * BIB has been issued yet). This order is the racepack QR's order, see RacepackQr.
      *
-     * @return array{code: string, bib_number: string}|null
+     * @return list<?string>
      */
-    public static function parseRacepackPayload(string $payload): ?array
+    public function participantBibNumbers(): array
     {
-        $parts = explode('|', trim($payload));
-
-        if (count($parts) !== 3 || $parts[0] !== self::RACEPACK_PAYLOAD_PREFIX || blank($parts[1]) || blank($parts[2])) {
-            return null;
-        }
-
-        return ['code' => $parts[1], 'bib_number' => $parts[2]];
+        return [$this->bib_number, ...$this->members->pluck('bib_number')->all()];
     }
 
     public static function generateUniqueCode(): string

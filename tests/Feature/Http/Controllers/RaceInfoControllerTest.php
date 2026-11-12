@@ -30,15 +30,15 @@ it('lists the official packages of each distance with their quotas and prices fr
         ->assertSeeInOrder([
             'id="category-panel-3k"',
             'Early Bid', 'Internal', 'Kuota 75 slot', 'Rp100.000', 'External', 'Kuota 50 slot', 'Rp100.000',
-            'Normal Bid', 'Internal', 'Kuota 75 slot', 'Rp100.000', 'External', 'Kuota belum diumumkan', 'Rp100.000',
-            'Family Bundle', 'Maks. 4 peserta', 'Kuota 20 paket', 'Rp100.000',
+            'Normal Bid', 'Internal', 'Kuota 75 slot', 'Rp100.000', 'External', 'Kuota tidak terbatas', 'Rp100.000',
+            'Family Bundle', '4 peserta', 'Kuota 20 paket', 'Rp100.000',
             'id="category-panel-5k"',
             'Early Bid', 'Internal', 'Kuota 100 slot', 'External', 'Kuota 100 slot',
-            'Normal Bid', 'Internal', 'Kuota 150 slot', 'External', 'Kuota belum diumumkan',
-            'Couple Bundle', 'Maks. 2 peserta', 'Kuota 50 paket',
+            'Normal Bid', 'Internal', 'Kuota 150 slot', 'External', 'Kuota tidak terbatas',
+            'Couple Bundle', '2 peserta', 'Kuota 50 paket',
             'id="category-panel-10k"',
             'Early Bid', 'Internal', 'Kuota 50 slot', 'External', 'Kuota 100 slot',
-            'Normal Bid', 'Internal', 'Kuota 100 slot', 'External', 'Kuota belum diumumkan',
+            'Normal Bid', 'Internal', 'Kuota 100 slot', 'External', 'Kuota tidak terbatas',
         ], false);
 });
 
@@ -70,14 +70,31 @@ it('counts taken slots per package and shows when one is sold out', function () 
         ->assertSeeInOrder(['id="category-panel-3k"', 'Early Bid', 'Internal', 'Sisa 1 dari 2 slot', 'External', 'Sold out'], false);
 });
 
-it('counts down to the configured race day', function () {
-    $this->travelTo('2027-03-20 05:30:00');
+it('counts down to Race Day, 11 April 2027 in Jakarta time', function () {
+    $this->travelTo('2027-04-09 03:15:00');
 
     $this->get(route('race.schedule'))
         ->assertOk()
-        ->assertSee('data-countdown="2027-03-21T05:30:00+07:00"', false)
-        ->assertSee('data-countdown-unit="days">01</span>', false)
-        ->assertSee('data-countdown-unit="hours">00</span>', false);
+        ->assertSee('data-countdown="2027-04-11T05:30:00+07:00"', false)
+        ->assertSee('data-countdown-unit="days">02</span>', false)
+        ->assertSee('data-countdown-unit="hours">02</span>', false)
+        ->assertSee('data-countdown-unit="minutes">15</span>', false)
+        ->assertSee('Minggu, 11 April 2027');
+});
+
+it('stops the countdown at zero once Race Day has started', function () {
+    $this->travelTo('2027-04-11 06:00:00');
+
+    $this->get(route('race.schedule'))
+        ->assertOk()
+        ->assertSee('data-countdown-unit="days">00</span>', false)
+        ->assertSee('data-countdown-unit="seconds">00</span>', false);
+});
+
+it('shows Race Day on the race information panel', function () {
+    $this->get(route('race.category'))
+        ->assertOk()
+        ->assertSeeInOrder(['Race Day', 'Minggu, 11 April 2027']);
 });
 
 it('shows the official PDD photo on each category tab', function () {

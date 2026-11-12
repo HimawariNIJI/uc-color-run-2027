@@ -56,7 +56,7 @@
                         <h3 class="mt-4 text-body-sm font-bold">Registration Details</h3>
                         <dl class="mt-3 flex flex-col gap-2.5">
                             <x-detail-row label="Registration ID">{{ $registration->code }}</x-detail-row>
-                            <x-detail-row label="Participant Name">{{ $registration->full_name }}</x-detail-row>
+                            <x-detail-row label="Full Nama (Nama Pembayar)">{{ $registration->full_name }}</x-detail-row>
                             <x-detail-row label="Email"><span class="break-all">{{ $registration->email }}</span></x-detail-row>
                             <x-detail-row label="Race Category">{{ $registration->category->runLabel() }} &middot; {{ $registration->type->label() }}</x-detail-row>
                             <x-detail-row label="Package">{{ $registration->packageName() }}</x-detail-row>
@@ -69,10 +69,13 @@
                         <h3 class="mt-4 border-t border-border pt-4 text-body-sm font-bold">Payment Information</h3>
                         <dl class="mt-3 flex flex-col gap-2.5">
                             <x-detail-row label="Payment Status">
-                                <x-badge :tone="$registration->payment_status->tone()">{{ $registration->payment_status->label() }}</x-badge>
+                                <x-badge :tone="$registration->paymentStatusTone()">{{ $registration->paymentStatusLabel() }}</x-badge>
                             </x-detail-row>
                             <x-detail-row label="Amount" emphasis>{{ \App\Support\Rupiah::format($registration->amount) }}</x-detail-row>
                         </dl>
+
+                        <h3 class="mt-4 border-t border-border pt-4 text-body-sm font-bold">Racepack QR</h3>
+                        <x-racepack-qr :registration="$registration" size="size-40" class="mt-3" />
                     </div>
 
                     <div class="mt-4 flex flex-col gap-3">
@@ -82,18 +85,27 @@
                                 <x-icon name="arrow-right" class="size-4.5" />
                             </x-button>
                         @else
-                            @if ($registration->hasFailedPayment())
-                                <form method="POST" action="{{ route('payment.retry') }}" data-submit-guard>
-                                    @csrf
-                                    <x-button type="submit" size="lg" pill block>
-                                        <x-icon name="wallet" class="size-4.5" />
-                                        Pay Now
-                                    </x-button>
-                                </form>
-                            @else
+                            {{-- Pay Now finishes a payment that can still be paid; Pay Again starts a new QRIS for the same package. --}}
+                            @if ($registration->isAwaitingPayment())
                                 <x-button :href="route('payment.show')" size="lg" pill block>
                                     <x-icon name="wallet" class="size-4.5" />
                                     Pay Now
+                                </x-button>
+                            @elseif ($retryBlockedReason === null)
+                                <form method="POST" action="{{ route('payment.retry') }}" data-submit-guard>
+                                    @csrf
+                                    <x-button type="submit" size="lg" pill block data-busy-label="Membuat kode QRIS…">
+                                        <x-icon name="wallet" class="size-4.5" />
+                                        Pay Again
+                                    </x-button>
+                                </form>
+                            @else
+                                @unless (session('error') === $retryBlockedReason)
+                                    <x-alert tone="error" title="Pembayaran ulang tidak tersedia">{{ $retryBlockedReason }}</x-alert>
+                                @endunless
+                                <x-button type="button" size="lg" pill block disabled>
+                                    <x-icon name="wallet" class="size-4.5" />
+                                    Pay Again
                                 </x-button>
                             @endif
                             <x-button :href="route('my-registration.edit')" variant="secondary" size="lg" pill block>

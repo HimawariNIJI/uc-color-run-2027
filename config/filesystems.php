@@ -38,6 +38,17 @@ return [
             'report' => false,
         ],
 
+        // Payers' KTP and Kartu Keluarga photos. Private and never served by URL: only signed-in
+        // admins can view them, through the admin.registrations.identity-photo route.
+        'identity_photos' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/identity-photos'),
+            'visibility' => 'private',
+            'serve' => false,
+            'throw' => true,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

@@ -43,9 +43,12 @@
                     <x-icon name="calendar" class="size-4" />
                     {{ $raceDay->translatedFormat('l, j F Y') }}
                 </p>
-                <h1 class="mt-5 text-h1 text-primary">Siap Berlari dan Bermandikan Warna?</h1>
+                <h1 class="mt-5 text-h1 text-primary">Siap Berlari, Berwarna, dan Berpesta Bersama?</h1>
                 <p class="mt-4 text-body-lg text-muted">
-                    UC Color Run 2027 kembali hadir di Universitas Ciputra Surabaya! Rasakan serunya berlari melewati color zone penuh warna bersama ribuan pelari, komunitas, dan keluarga. Pilih kategori 3K, 5K, atau 10K sesuai kemampuanmu dan jadikan garis finish sebagai perayaan.
+                    UC Color Run 2027 kembali hadir di Universitas Ciputra Surabaya! Bersiaplah untuk pengalaman seru yang memadukan olahraga, hiburan, dan kebersamaan dalam satu festival penuh warna!
+                </p>
+                <p class="mt-4 text-body-lg text-muted">
+                    Pilih tantanganmu di kategori 3K, 5K, atau 10K dan selesaikan rute lari bersama teman-temanmu. Setelah berlari, keseruan berlanjut dengan bazaar, DJ performance, dan color powder party yang akan menjadi puncak perayaan penuh warna bersama seluruh peserta!
                 </p>
                 <p class="mt-6 text-body font-semibold">
                     @if ($isEarlyBidOpen)
@@ -102,10 +105,10 @@
                 'md:grid-cols-4' => $timeline->count() >= 4,
             ])>
                 @foreach ($timeline as $milestone)
-                    <li class="relative flex gap-4 pb-8 last:pb-0 md:flex-col md:gap-0 md:pb-0" data-reveal style="--reveal-delay: {{ $loop->index * 120 }}ms">
+                    <li class="relative flex gap-4 pb-8 last:pb-0 md:flex-col md:items-center md:gap-0 md:pb-0 md:text-center" data-reveal style="--reveal-delay: {{ $loop->index * 120 }}ms">
                         @unless ($loop->last)
                             <span @class([
-                                'absolute left-[11px] top-7 bottom-1 w-1 rounded-full md:left-7 md:-right-5 md:top-[10px] md:bottom-auto md:h-1 md:w-auto',
+                                'absolute left-[11px] top-7 bottom-1 w-1 rounded-full md:left-[calc(50%_+_16px)] md:top-[10px] md:bottom-auto md:h-1 md:w-[calc(100%_-_8px)]',
                                 'bg-brand-yellow' => $milestone['is_past'],
                                 'bg-brand-cream/25' => ! $milestone['is_past'],
                             ]) aria-hidden="true"></span>
@@ -124,8 +127,8 @@
                             @endif
                         </span>
 
-                        <div class="min-w-0 md:mt-5 md:pr-4">
-                            <p class="text-body-sm font-semibold text-brand-yellow">{{ $milestone['dates'] }}</p>
+                        <div class="min-w-0 md:mt-5 md:px-2 lg:px-4">
+                            <p class="text-body-sm font-semibold text-balance text-brand-yellow">{{ $milestone['dates'] }}</p>
                             <h3 class="mt-1 font-display text-h4 text-brand-cream">{{ $milestone['title'] }}</h3>
                             @if ($milestone['is_current'])
                                 <span class="mt-2 inline-flex items-center gap-1.5 rounded-full bg-brand-yellow px-2.5 py-1 text-caption font-semibold text-primary">
@@ -133,7 +136,7 @@
                                     Sedang berlangsung
                                 </span>
                             @endif
-                            <p class="mt-2 text-body-sm text-brand-cream/80">{{ $milestone['description'] }}</p>
+                            <p class="mt-2 text-body-sm text-pretty text-brand-cream/80">{{ $milestone['description'] }}</p>
                         </div>
                     </li>
                 @endforeach

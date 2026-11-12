@@ -29,6 +29,8 @@ class RegistrationMemberFactory extends Factory
             'gender' => fake()->randomElement(Gender::cases()),
             'identity_number' => fake()->numerify('################'),
             'tshirt_size' => fake()->randomElement(TshirtSize::cases()),
+            'medical_history' => 'Tidak Ada',
+            'drug_allergies' => 'Tidak Ada',
         ];
     }
 }

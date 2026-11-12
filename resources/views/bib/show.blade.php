@@ -18,10 +18,10 @@
                     @endif
 
                     <p class="mt-8 text-caption font-semibold uppercase tracking-[0.2em] text-muted">Racepack QR-Code</p>
-                    <div class="mt-3 rounded-2xl border border-border bg-white p-3 shadow-card">
-                        <x-racepack-qr-placeholder />
-                    </div>
-                    <p class="mt-4 max-w-sm text-body-sm text-muted">QR pengambilan race pack akan tersedia di sini. Kode registrasi: <span class="font-semibold text-foreground">{{ $registration->code }}</span></p>
+                    <x-racepack-qr :registration="$registration" class="mt-3" />
+                    <p class="mt-4 max-w-sm text-body-sm text-muted">
+                        Tunjukkan QR ini kepada panitia saat pengambilan race pack{{ $registration->members->isNotEmpty() ? ', satu QR untuk semua peserta' : '' }}. Kode registrasi: <span class="font-semibold text-foreground">{{ $registration->code }}</span>
+                    </p>
                 </div>
             @else
                 <x-state-message class="py-8 md:py-12" icon="lock" title="Your BIB Is Not Available Yet" tone="neutral">

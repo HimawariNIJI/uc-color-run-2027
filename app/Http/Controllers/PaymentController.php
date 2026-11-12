@@ -6,7 +6,6 @@ use App\Models\Payment;
 use App\Models\Registration;
 use App\Support\Midtrans;
 use App\Support\QrisCheckout;
-use App\Support\Rupiah;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -81,39 +80,24 @@ class PaymentController extends Controller
     }
 
     /**
-     * Start a new QRIS after a failed or expired one. Never creates a second QRIS while one can
-     * still be scanned, and claims a slot again first, at the package's current price.
+     * "Pay Again" from My Registration or the failed page, or "Buat Kode QRIS" on the payment page:
+     * a new QRIS for the same package, only while that package has a free slot. Never creates a
+     * second QRIS while one can still be paid (see QrisCheckout::retry).
      */
     public function retry(Request $request): RedirectResponse
     {
         $registration = $request->user()->registration;
-        $payment = $this->currentPayment($registration);
 
         if ($registration->isPaid()) {
             return to_route('payment.success');
         }
 
-        if ($payment?->isActive()) {
-            return to_route('payment.show');
-        }
-
-        $moved = false;
-
-        if ($registration->hasFailedPayment() || $registration->paymentHasExpired()) {
-            ['opened' => $opened, 'moved' => $moved, 'message' => $message] = QrisCheckout::reopen($registration);
-
-            if (! $opened) {
-                return to_route('payment.failed')->with('error', $message);
-            }
-        }
-
-        if ($error = QrisCheckout::start($registration)) {
+        if ($error = QrisCheckout::retry($registration)) {
             return to_route('payment.failed')->with('error', $error);
         }
 
-        return to_route('payment.show')->with('info', $moved
-            ? "Kuota Early Bid sudah habis, sehingga registrasimu dipindahkan ke {$registration->packageName()} (".Rupiah::format($registration->amount).').'
-            : null);
+        // Checking an expired QRIS with Midtrans can turn up a payment made at the last moment.
+        return to_route($registration->refresh()->isPaid() ? 'payment.success' : 'payment.show');
     }
 
     public function success(Request $request): View|RedirectResponse
@@ -143,6 +127,7 @@ class PaymentController extends Controller
 
         return view('payment.failed', [
             'registration' => $registration,
+            'retryBlockedReason' => QrisCheckout::retryBlockedReason($registration),
         ]);
     }
 
@@ -151,14 +136,7 @@ class PaymentController extends Controller
      */
     private function currentPayment(Registration $registration): ?Payment
     {
-        $payment = $registration->latestPayment;
-
-        if ($payment?->isPending() && $payment->hasExpired()) {
-            QrisCheckout::refresh($payment);
-            $registration->refresh();
-        }
-
-        return $payment?->fresh();
+        return QrisCheckout::latestPayment($registration);
     }
 
     private function checkedRegistration(Request $request): Registration

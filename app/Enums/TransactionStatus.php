@@ -11,11 +11,13 @@ enum TransactionStatus: string
     case Success = 'success';
     case Failed = 'failed';
     case Expired = 'expired';
+    case Cancelled = 'cancelled';
 
     /**
      * Map a transaction_status verified with Midtrans. QRIS payments end in "settlement";
      * "capture" only happens for cards and counts as paid when the fraud check accepted it.
-     * Cancelled, denied and failed transactions are all failures for the participant.
+     * Cancelled, denied and failed transactions are all failures for the participant; a
+     * cancellation is kept apart so the committee can tell it from a failure.
      */
     public static function fromMidtrans(string $transactionStatus, ?string $fraudStatus = null): self
     {
@@ -24,6 +26,7 @@ enum TransactionStatus: string
             'capture' => in_array($fraudStatus, [null, 'accept'], true) ? self::Success : self::Pending,
             'pending' => self::Pending,
             'expire' => self::Expired,
+            'cancel' => self::Cancelled,
             default => self::Failed,
         };
     }
@@ -35,6 +38,7 @@ enum TransactionStatus: string
             self::Success => 'Lunas',
             self::Failed => 'Gagal',
             self::Expired => 'Kedaluwarsa',
+            self::Cancelled => 'Dibatalkan',
         };
     }
 }

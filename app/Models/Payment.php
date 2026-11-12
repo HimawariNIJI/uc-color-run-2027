@@ -3,10 +3,14 @@
 namespace App\Models;
 
 use App\Enums\TransactionStatus;
+use App\Observers\ParticipantsSheetObserver;
 use App\Support\QrCode;
 use Database\Factories\PaymentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,12 +20,18 @@ use RuntimeException;
 /**
  * One Midtrans QRIS payment attempt for a registration.
  */
+#[ObservedBy([ParticipantsSheetObserver::class])]
 #[Fillable(['order_id', 'gateway_transaction_id', 'amount', 'status', 'qr_string', 'qr_url', 'expires_at', 'paid_at'])]
 #[Hidden(['qr_string'])]
 class Payment extends Model
 {
     /** @use HasFactory<PaymentFactory> */
     use HasFactory;
+
+    /**
+     * How long creating a QRIS may take before an attempt without one counts as lost.
+     */
+    public const QRIS_CREATION_MINUTES = 2;
 
     /**
      * Get the attributes that should be cast.
@@ -62,6 +72,37 @@ class Payment extends Model
     public function isActive(): bool
     {
         return $this->isPending() && $this->qr_string !== null && ! $this->hasExpired();
+    }
+
+    /**
+     * Pending and inside its payment window: still scannable, or its QRIS is being created right
+     * now. No new attempt may start while one is payable.
+     */
+    public function isPayable(): bool
+    {
+        return $this->isPending() && ! $this->hasExpired();
+    }
+
+    /**
+     * Pending without a QRIS long after it was created: the request that should have asked
+     * Midtrans for the QRIS ended before it could save it.
+     */
+    public function lostItsQris(): bool
+    {
+        return $this->isPending() && $this->qr_string === null && $this->created_at->lt(now()->subMinutes(self::QRIS_CREATION_MINUTES));
+    }
+
+    /**
+     * Pending attempts worth asking Midtrans about: every one with a QRIS, and those whose QRIS
+     * was lost. A QRIS still being created is left to the request creating it.
+     */
+    #[Scope]
+    protected function awaitingMidtrans(Builder $query): void
+    {
+        $query->where('status', TransactionStatus::Pending)
+            ->where(fn (Builder $query) => $query
+                ->whereNotNull('qr_string')
+                ->orWhere('created_at', '<', now()->subMinutes(self::QRIS_CREATION_MINUTES)));
     }
 
     /**
@@ -108,7 +149,7 @@ class Payment extends Model
         $registration = $this->registration;
 
         if ($result === TransactionStatus::Success) {
-            $registration->markAsPaid($this->order_id);
+            $registration->markAsPaid($this);
         } elseif (! $registration->isPaid() && $registration->latestPayment()->first()?->is($this)) {
             $registration->markAsFailed();
         }
